@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эко-Календарь</title>
+    <link rel="stylesheet" href="./css/frontend.css">
+    </head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">🌿</div>
+            <div>
+                <h1>Eco-Kolendar</h1>
+                <p>Green Heritage</p>
+            </div>
+        </div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+            <div class="view-toggle">
+                <button class="view-btn" onclick="switchView('grid')" title="Сетка">📱</button>
+                <button class="view-btn active" onclick="switchView('calendar')" title="Календарь">📅</button>
+                <button class="view-btn" onclick="switchView('map')" title="Карта">🗺️</button>
+            </div>
+            <div id="userArea">
+                <button class="btn-auth" onclick="showLogin()">🔑 Вход</button>
+                <button class="btn-auth" onclick="showRegister()">📝 Регистрация</button>
+            </div>
+            <div id="adminArea" style="display: none;">
+                <button class="btn-admin" onclick="showAddHolidayForm()">+ Праздник</button>
+                <button class="btn-admin admin-only" onclick="importHolidays()" style="background: #FF9800;">📥 Импорт</button>
+                <button class="btn-admin admin-only" onclick="showAdminPanel()" style="background: #2196F3;">⚙️ Админка</button>
+                <button class="btn-admin admin-only" onclick="testAllAPIs()" style="background: #9C27B0;">� Тест API</button>
+                <span id="userName" style="color: #5A5A40; font-weight: 600; margin-left: 10px; margin-right: 15px;"></span>
+                <button class="btn-auth" onclick="logout()">🚪 Выйти</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="filters">
+        <input type="text" class="search-input" placeholder="🔍 Поиск праздника..." oninput="applyFilters()" id="searchInput">
+        
+        <div class="btn-group" id="typeFilter">
+            <button class="btn active" onclick="setFilter('type', 'all', this)">Все</button>
+            <button class="btn" onclick="setFilter('type', 'eco', this)">🌿 Эко</button>
+            <button class="btn" onclick="setFilter('type', 'national', this)">🇷🇺 Нац</button>
+            <button class="btn" onclick="setFilter('type', 'world', this)">🌍 Мир</button>
+        </div>
+        
+        <div class="btn-group" id="regionFilter">
+            <button class="btn active" onclick="setFilter('region', 'all', this)">Все регионы</button>
+            <button class="btn" onclick="setFilter('region', 'russia', this)">🇷🇺 Россия</button>
+            <button class="btn" onclick="setFilter('region', 'world', this)">🌍 Мир</button>
+        </div>
+    </div>
+
+    <!-- Контейнер для календаря -->
+            <div id="calendarView">
+                <div class="calendar-container">
+                    <div class="calendar-nav">
+                        <button onclick="prevMonth()">◀</button>
+                        <h2 id="calendarMonthTitle"></h2>
+                        <button onclick="nextMonth()">▶</button>
+                    </div>
+                    <div class="weekdays">
+                        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+                    </div>
+                    <div class="days-grid" id="calendarDays"></div>
+                </div>
+            </div>
+
+            <!-- Контейнер для новостей (теперь под календарем) -->
+            <div id="newsView" style="display: none;">
+                <div class="news-container">
+                    <div class="news-header">
+                        <h2>📰 Экологические новости</h2>
+                        <button class="btn-refresh" onclick="loadEcoNews()">🔄 Обновить</button>
+                    </div>
+                    <div id="newsContent" class="news-grid">
+                        <!-- Новости будут загружены динамически -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Контейнер для карты заповедников -->
+            <div id="mapView" style="display: none;">
+                <div class="map-container">
+                    <div class="map-controls">
+                        <input type="text" id="locationSearch" class="map-search" placeholder="🔍 Поиск места..." onkeypress="if(event.key==='Enter') searchLocation()">
+                        <button class="map-btn" onclick="searchLocation()">🔍 Найти</button>
+                        <button class="map-btn" onclick="findNearbyParks()">🌿 Парки рядом</button>
+                    </div>
+                    <div id="map">
+                        <!-- Карта будет загружена здесь -->
+                        <div id="mapPlaceholder">
+                            <div class="loading-spinner"></div>
+                            <p>Загрузка карты...</p>
+                        </div>
+                    </div>
+                    <div id="placesList" class="places-list">
+                        <h3>📍 Найденные места</h3>
+                        <div id="placesContent">
+                            <!-- Места будут загружены динамически -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="newsContainer" style="margin-top: 20px;"></div>
+
+            <!-- Контейнер для сетки -->
+            <div id="gridView" style="display: none;">
+                <div id="holidaysContainer" class="holidays-grid">
+                    <div class="loading">Загрузка праздников...</div>
+                </div>
+            </div>
+
+    <div class="modal" id="holidayModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">✕</button>
+            <div class="modal-header">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;" id="modalBadges"></div>
+                <h2 id="modalTitle" style="color: white; font-size: 28px;"></h2>
+            </div>
+            <div class="modal-body">
+                <p id="modalDescription" style="color: #666; line-height: 1.8; margin-bottom: 25px;"></p>
+                <h3 style="color: #5A5A40; margin-bottom: 15px;">📅 Мероприятия</h3>
+                <ul class="events-list" id="modalEvents"></ul>
+                <a href="#" target="_blank" class="wiki-link" id="modalWiki" style="display: none;">📚 Подробнее в Википедии</a>
+                <button class="delete-btn" onclick="deleteCurrentHoliday()">🗑️ Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно авторизации -->
+    <div class="modal" id="authModal">
+        <div class="auth-modal-content">
+            <button class="close-btn" onclick="closeAuthModal()">✕</button>
+            <div id="authModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Подключаем Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Подключаем Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="./js/map-2gis-pure.js"></script>
+    <script src="./js/frontend.js" defer></script>
+</body>
+</html>
