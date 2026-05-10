@@ -3,8 +3,8 @@ let currentFilters = { type: 'all', region: 'all', search: '' };
 let currentView = 'calendar';
 let allHolidays = [];
 let currentHolidayId = null;
-let currentUser = null; 
-let calendarMonth = new Date().getMonth(); 
+let currentUser = null;
+let calendarMonth = new Date().getMonth();
 let calendarYear = new Date().getFullYear();
 let userLocation = null;
 
@@ -24,48 +24,66 @@ if (localStorage.getItem('user')) {
     currentUser = JSON.parse(localStorage.getItem('user'));
     updateUserUI();
 }
-        
+
 // Календарь
 
-        const typeLabels = { eco: 'Экология', national: 'Национальный', world: 'Мировой' };
-        const typeClasses = { eco: 'type-eco', national: 'type-national', world: 'type-world' };
-        const regionLabels = { russia: 'Россия', world: 'Весь мир' };
-        const months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 
-                       'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря'];
-        const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-                           'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const typeLabels = { eco: 'Экология', national: 'Национальный', world: 'Мировой' };
+const typeClasses = { eco: 'type-eco', national: 'type-national', world: 'type-world' };
+const regionLabels = { russia: 'Россия', world: 'Весь мир' };
+const months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
+    'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря'];
+const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
-        // Переключение вида
-        function switchView(view) {
-            currentView = view;
-            
-            // Обновляем кнопки
-            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // Показываем/скрываем контейнеры
-            document.getElementById('gridView').style.display = view === 'grid' ? 'block' : 'none';
-            document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
-            document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
-            
-            if (view === 'calendar') {
-                renderCalendar();
-            } else if (view === 'grid') {
-                renderGrid();
-            } else if (view === 'map') {
-                // Инициализируем карту при переключении на вид карты
-                setTimeout(() => {
-                    if (!window.ecoMap) {
-                        initializeMap2GISPure();
-                    } else {
-                        // Обновляем размер карты
-                        window.ecoMap.map.invalidateSize();
-                    }
-                }, 100);
+// Инициализация селекта месяцев (вызывается при загрузке)
+function initMonthSelect() {
+    const monthSelect = document.getElementById('monthSelect');
+    if (monthSelect && monthSelect.options.length === 0) {
+        monthNames.forEach((name, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = name;
+            monthSelect.appendChild(option);
+        });
+        monthSelect.value = calendarMonth;
+    }
+    const yearInput = document.getElementById('yearInput');
+    if (yearInput) {
+        yearInput.value = calendarYear;
+    }
+}
+
+// Переключение вида
+function switchView(view) {
+    currentView = view;
+
+    // Обновляем кнопки
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Показываем/скрываем контейнеры
+    document.getElementById('gridView').style.display = view === 'grid' ? 'block' : 'none';
+    document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
+    document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
+
+    if (view === 'calendar') {
+        renderCalendar();
+    } else if (view === 'grid') {
+        renderGrid();
+    } else if (view === 'map') {
+        // Инициализируем карту при переключении на вид карты
+        setTimeout(() => {
+            if (!window.ecoMap) {
+                initializeMap2GISPure();
+            } else {
+                // Обновляем размер карты
+                window.ecoMap.map.invalidateSize();
             }
-        }
+        }, 100);
+    }
+}
 
-        function updateUserUI() {
+function updateUserUI() {
     if (currentUser) {
         document.getElementById('userArea').style.display = 'none';
         document.getElementById('adminArea').style.display = 'flex';
@@ -75,11 +93,11 @@ if (localStorage.getItem('user')) {
         const roleInfo = getRoleInfo(currentUser.role);
         const userNameEl = document.getElementById('userName');
         userNameEl.textContent = `${roleInfo.icon} ${currentUser.name} (${roleInfo.label})`;
-        
+
         // Показываем кнопки админа только для админов
         const adminBtns = document.querySelectorAll('.admin-only');
         adminBtns.forEach(b => b.style.display = currentUser.role === 1 ? 'inline-block' : 'none');
-        
+
         // Кнопка "+ Праздник" видна только админу
         document.querySelector('.btn-admin').style.display = currentUser.role === 1 ? 'inline-block' : 'none';
     } else {
@@ -176,9 +194,9 @@ async function importHolidays() {
         alert('Только администратор может импортировать праздники');
         return;
     }
-    
+
     if (!confirm('Импортировать праздники из внешнего API? Это добавит новые международные праздники.')) return;
-    
+
     try {
         const response = await fetch(`${API_URL}/import/holidays`);
         const data = await response.json();
@@ -228,7 +246,7 @@ function showAddHolidayForm() {
         alert('Только администратор может добавлять праздники');
         return;
     }
-    
+
     // Удаляем старые формы
     const oldForm = document.getElementById('holidayForm');
     if (oldForm) oldForm.remove();
@@ -260,7 +278,7 @@ function showAddHolidayForm() {
             <button onclick="addHoliday()">Сохранить</button>
             <p class="form-switch" onclick="document.getElementById('holidayForm').remove()">Отмена</p>
         </div>`;
-    
+
     document.getElementById('gridView').insertAdjacentHTML('beforebegin', formHtml);
 }
 
@@ -269,7 +287,7 @@ async function addHoliday() {
         .split(',')
         .map(e => e.trim())
         .filter(e => e);
-    
+
     const data = {
         name: document.getElementById('newName').value,
         day: parseInt(document.getElementById('newDay').value),
@@ -280,14 +298,14 @@ async function addHoliday() {
         events: events,
         wikipedia_url: document.getElementById('newWikiUrl').value
     };
-    
+
     try {
         const response = await fetch(`${API_URL}/holidays`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        
+
         if (response.ok) {
             document.getElementById('holidayForm').remove();
             loadHolidays();
@@ -297,44 +315,44 @@ async function addHoliday() {
     }
 }
 
-        // Загрузка данных
-        async function loadHolidays() {
-            try {
-                const params = new URLSearchParams();
-                if (currentFilters.type !== 'all') params.append('type', currentFilters.type);
-                if (currentFilters.region !== 'all') params.append('region', currentFilters.region);
-                if (currentFilters.search) params.append('search', currentFilters.search);
-                
-                const response = await fetch(`${API_URL}/holidays?${params}`);
-                allHolidays = await response.json();
-                
-                if (currentView === 'grid') {
-                    renderGrid();
-                } else {
-                    renderCalendar();
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки:', error);
-                const container = document.getElementById('holidaysContainer');
-                container.innerHTML = '<div class="loading" style="color: red;">❌ Ошибка загрузки. Проверьте, запущен ли сервер на http://127.0.0.1:8000</div>';
-            }
-        }
+// Загрузка данных
+async function loadHolidays() {
+    try {
+        const params = new URLSearchParams();
+        if (currentFilters.type !== 'all') params.append('type', currentFilters.type);
+        if (currentFilters.region !== 'all') params.append('region', currentFilters.region);
+        if (currentFilters.search) params.append('search', currentFilters.search);
 
-        // Сетка (карточки)
-        function renderGrid() {
-            const container = document.getElementById('holidaysContainer');
-            
-            if (!allHolidays || allHolidays.length === 0) {
-                container.innerHTML = `
+        const response = await fetch(`${API_URL}/holidays?${params}`);
+        allHolidays = await response.json();
+
+        if (currentView === 'grid') {
+            renderGrid();
+        } else {
+            renderCalendar();
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        const container = document.getElementById('holidaysContainer');
+        container.innerHTML = '<div class="loading" style="color: red;">❌ Ошибка загрузки. Проверьте, запущен ли сервер на http://127.0.0.1:8000</div>';
+    }
+}
+
+// Сетка (карточки)
+function renderGrid() {
+    const container = document.getElementById('holidaysContainer');
+
+    if (!allHolidays || allHolidays.length === 0) {
+        container.innerHTML = `
                     <div class="empty" style="grid-column: 1/-1;">
                         <div class="empty-icon">🌍</div>
                         <h3>Ничего не найдено</h3>
                         <p>Попробуйте изменить параметры поиска</p>
                     </div>`;
-                return;
-            }
-            
-            container.innerHTML = allHolidays.map(holiday => `
+        return;
+    }
+
+    container.innerHTML = allHolidays.map(holiday => `
                 <div class="holiday-card" onclick="openModal(${holiday.id})">
                     <div class="card-header">
                         <div class="date-badge">📅 ${holiday.day} ${months[holiday.month]}</div>
@@ -348,437 +366,514 @@ async function addHoliday() {
                     </div>
                 </div>
             `).join('');
+}
+
+// Календарь
+async function renderCalendar() {
+    document.getElementById('calendarMonthTitle').textContent =
+        `${monthNames[calendarMonth]} ${calendarYear}`;
+
+    // Обновляем селект месяца и поле года
+    const monthSelect = document.getElementById('monthSelect');
+    if (monthSelect) {
+        if (monthSelect.options.length === 0) {
+            monthNames.forEach((name, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = name;
+                monthSelect.appendChild(option);
+            });
+        }
+        monthSelect.value = calendarMonth;
+    }
+    const yearInput = document.getElementById('yearInput');
+    if (yearInput) {
+        yearInput.value = calendarYear;
+    }
+
+    const daysContainer = document.getElementById('calendarDays');
+
+    // Получаем выходные дни для этого месяца
+    try {
+        const response = await fetch(`${API_URL}/work-days?year=${calendarYear}&month=${calendarMonth}`);
+        const workDays = await response.json();
+
+        // Первый день месяца
+        const firstDay = new Date(calendarYear, calendarMonth, 1);
+        // Последний день месяца
+        const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
+
+        // День недели первого дня (Пн=0, Вс=6)
+        let startDay = firstDay.getDay() - 1;
+        if (startDay < 0) startDay = 6;
+
+        let html = '';
+
+        // Пустые ячейки перед первым днем
+        for (let i = 0; i < startDay; i++) {
+            html += '<div class="day-cell other-month"></div>';
         }
 
-        // Календарь
-        async function renderCalendar() {
-            document.getElementById('calendarMonthTitle').textContent = 
-                `${monthNames[calendarMonth]} ${calendarYear}`;
-            
-            const daysContainer = document.getElementById('calendarDays');
-            
-            // Получаем выходные дни для этого месяца
-            try {
-                const response = await fetch(`${API_URL}/work-days?year=${calendarYear}&month=${calendarMonth}`);
-                const workDays = await response.json();
-                
-                // Первый день месяца
-                const firstDay = new Date(calendarYear, calendarMonth, 1);
-                // Последний день месяца
-                const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
-                
-                // День недели первого дня (Пн=0, Вс=6)
-                let startDay = firstDay.getDay() - 1;
-                if (startDay < 0) startDay = 6;
-                
-                let html = '';
-                
-                // Пустые ячейки перед первым днем
-                for (let i = 0; i < startDay; i++) {
-                    html += '<div class="day-cell other-month"></div>';
-                }
-                
-                // Дни месяца
-                for (let day = 1; day <= lastDay.getDate(); day++) {
-                    const dayHolidays = allHolidays.filter(h => 
-                        h.day === day && h.month === calendarMonth
-                    );
-                    
-                    const workDay = workDays.find(w => w.day === day);
-                    const isWeekend = workDay ? workDay.is_weekend : 0;
-                    const isHoliday = workDay ? workDay.is_holiday : 0;
-                    
-                    const isToday = (day === new Date().getDate() && 
-                                    calendarMonth === new Date().getMonth() && 
-                                    calendarYear === new Date().getFullYear());
-                    
-                    let cellClass = 'day-cell';
-                    if (isToday) cellClass += ' today';
-                    if (isWeekend === 1) cellClass += ' weekend';
-                    if (isWeekend === 2 || isHoliday === 1) cellClass += ' holiday';
-                    
-                    html += `<div class="${cellClass}">`;
-                    html += `<div class="day-number">${day}</div>`;
-                    
-                    // Не показываем статус дня, только праздники
-                    
-                    // Показываем первые 2 праздника
-                    const maxShow = 2;
-                    dayHolidays.slice(0, maxShow).forEach(h => {
-                        html += `<div class="day-holiday ${h.type}" onclick="event.stopPropagation(); openModal(${h.id})" title="${h.name}">${h.name.substring(0, 25)}</div>`;
-                    });
-                    
-                    if (dayHolidays.length > maxShow) {
-                        html += `<div class="more-badge">+${dayHolidays.length - maxShow} ещё</div>`;
-                    }
-                    
-                    html += '</div>';
-                }
-                
-                daysContainer.innerHTML = html;
-            } catch (error) {
-                console.error('Ошибка загрузки выходных дней:', error);
-                // Fallback - показываем только праздники
-                renderCalendarFallback();
+        // Дни месяца
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const dayHolidays = allHolidays.filter(h =>
+                h.day === day && h.month === calendarMonth
+            );
+
+            const workDay = workDays.find(w => w.day === day);
+            const isWeekend = workDay ? workDay.is_weekend : 0;
+            const isHoliday = workDay ? workDay.is_holiday : 0;
+
+            const isToday = (day === new Date().getDate() &&
+                calendarMonth === new Date().getMonth() &&
+                calendarYear === new Date().getFullYear());
+
+            let cellClass = 'day-cell';
+            if (isToday) cellClass += ' today';
+            if (isWeekend === 1) cellClass += ' weekend';
+            if (isWeekend === 2 || isHoliday === 1) cellClass += ' holiday';
+
+            html += `<div class="${cellClass}">`;
+            html += `<div class="day-number">${day}</div>`;
+
+            // Не показываем статус дня, только праздники
+
+            // Показываем первые 2 праздника
+            const maxShow = 2;
+            dayHolidays.slice(0, maxShow).forEach(h => {
+                html += `<div class="day-holiday ${h.type}" onclick="event.stopPropagation(); openModal(${h.id})" title="${h.name}">${h.name.substring(0, 25)}</div>`;
+            });
+
+            if (dayHolidays.length > maxShow) {
+                html += `<div class="more-badge" onclick="event.stopPropagation(); showDayHolidays(${day}, ${calendarMonth}, ${calendarYear})">+${dayHolidays.length - maxShow} ещё</div>`;
             }
+
+            html += '</div>';
         }
 
-        // Fallback функция для календаря без выходных дней
-        function renderCalendarFallback() {
-            const daysContainer = document.getElementById('calendarDays');
-            
-            // Первый день месяца
-            const firstDay = new Date(calendarYear, calendarMonth, 1);
-            // Последний день месяца
-            const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
-            
-            // День недели первого дня (Пн=0, Вс=6)
-            let startDay = firstDay.getDay() - 1;
-            if (startDay < 0) startDay = 6;
-            
-            let html = '';
-            
-            // Пустые ячейки перед первым днем
-            for (let i = 0; i < startDay; i++) {
-                html += '<div class="day-cell other-month"></div>';
-            }
-            
-            // Дни месяца
-            for (let day = 1; day <= lastDay.getDate(); day++) {
-                const dayHolidays = allHolidays.filter(h => 
-                    h.day === day && h.month === calendarMonth
-                );
-                
-                const isToday = (day === new Date().getDate() && 
-                                calendarMonth === new Date().getMonth() && 
-                                calendarYear === new Date().getFullYear());
-                
-                // Определяем выходные по дням недели (суббота, воскресенье)
-                const dayOfWeek = new Date(calendarYear, calendarMonth, day).getDay();
-                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-                
-                let cellClass = 'day-cell';
-                if (isToday) cellClass += ' today';
-                if (isWeekend) cellClass += ' weekend';
-                
-                html += `<div class="${cellClass}">`;
-                html += `<div class="day-number">${day}</div>`;
-                
-                // Не показываем статус дня, только праздники
-                
-                // Показываем первые 2 праздника
-                const maxShow = 2;
-                dayHolidays.slice(0, maxShow).forEach(h => {
-                    html += `<div class="day-holiday ${h.type}" onclick="event.stopPropagation(); openModal(${h.id})" title="${h.name}">${h.name.substring(0, 25)}</div>`;
-                });
-                
-                if (dayHolidays.length > maxShow) {
-                    html += `<div class="more-badge">+${dayHolidays.length - maxShow} ещё</div>`;
-                }
-                
-                html += '</div>';
-            }
-            
-            daysContainer.innerHTML = html;
+        daysContainer.innerHTML = html;
+    } catch (error) {
+        console.error('Ошибка загрузки выходных дней:', error);
+        // Fallback - показываем только праздники
+        renderCalendarFallback();
+    }
+}
+
+function showDayHolidays(day, month, year) {
+    const dayHolidays = allHolidays.filter(h =>
+        h.day === day && h.month === month
+    );
+
+    if (dayHolidays.length === 0) return;
+
+    const dateStr = `${day} ${monthNames[month]} ${year}`;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.zIndex = '2000';
+    modal.onclick = function (e) { if (e.target === this) this.remove(); };
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="padding: 30px;">
+                <button class="close-btn" onclick="this.closest('.modal').remove()" style="color: white;">✕</button>
+                <h2 style="color: white; font-size: 22px;">📅 ${dateStr}</h2>
+                <p style="color: rgba(255,255,255,0.8); margin-top: 10px;">Праздники этого дня</p>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    ${dayHolidays.map(h => `
+                        <div onclick="document.querySelector('.modal.active[style*=\\'z-index: 2000\\']').remove(); openModal(${h.id})" 
+                             style="padding: 15px; background: #f5f5f0; border-radius: 12px; cursor: pointer; transition: all 0.2s; border-left: 4px solid ${h.type === 'eco' ? '#4caf50' : h.type === 'national' ? '#2196F3' : '#9C27B0'};"
+                             onmouseover="this.style.transform='translateX(5px)'; this.style.background='#e8f5e9';" 
+                             onmouseout="this.style.transform=''; this.style.background='#f5f5f0';">
+                            <div style="font-weight: 600; color: #5A5A40; margin-bottom: 5px;">${h.name}</div>
+                            <div style="font-size: 13px; color: #666;">${h.description.substring(0, 100)}...</div>
+                            <div style="margin-top: 8px;">
+                                <span class="type-badge ${typeClasses[h.type]}" style="font-size: 11px;">${typeLabels[h.type]}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+function goToSelectedMonth() {
+    const monthSelect = document.getElementById('monthSelect');
+    const yearInput = document.getElementById('yearInput');
+
+    if (monthSelect) {
+        calendarMonth = parseInt(monthSelect.value);
+    }
+    if (yearInput) {
+        const year = parseInt(yearInput.value);
+        if (year >= 2000 && year <= 2100) {
+            calendarYear = year;
+        }
+    }
+    loadHolidays();
+}
+
+// Fallback функция для календаря без выходных дней
+function renderCalendarFallback() {
+    const daysContainer = document.getElementById('calendarDays');
+
+    // Первый день месяца
+    const firstDay = new Date(calendarYear, calendarMonth, 1);
+    // Последний день месяца
+    const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
+
+    // День недели первого дня (Пн=0, Вс=6)
+    let startDay = firstDay.getDay() - 1;
+    if (startDay < 0) startDay = 6;
+
+    let html = '';
+
+    // Пустые ячейки перед первым днем
+    for (let i = 0; i < startDay; i++) {
+        html += '<div class="day-cell other-month"></div>';
+    }
+
+    // Дни месяца
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dayHolidays = allHolidays.filter(h =>
+            h.day === day && h.month === calendarMonth
+        );
+
+        const isToday = (day === new Date().getDate() &&
+            calendarMonth === new Date().getMonth() &&
+            calendarYear === new Date().getFullYear());
+
+        // Определяем выходные по дням недели (суббота, воскресенье)
+        const dayOfWeek = new Date(calendarYear, calendarMonth, day).getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+        let cellClass = 'day-cell';
+        if (isToday) cellClass += ' today';
+        if (isWeekend) cellClass += ' weekend';
+
+        html += `<div class="${cellClass}">`;
+        html += `<div class="day-number">${day}</div>`;
+
+        // Не показываем статус дня, только праздники
+
+        // Показываем первые 2 праздника
+        const maxShow = 2;
+        dayHolidays.slice(0, maxShow).forEach(h => {
+            html += `<div class="day-holiday ${h.type}" onclick="event.stopPropagation(); openModal(${h.id})" title="${h.name}">${h.name.substring(0, 25)}</div>`;
+        });
+
+        if (dayHolidays.length > maxShow) {
+            html += `<div class="more-badge">+${dayHolidays.length - maxShow} ещё</div>`;
         }
 
-        function prevMonth() {
-            if (calendarMonth === 0) {
-                calendarMonth = 11;
-                calendarYear--;
-            } else {
-                calendarMonth--;
-            }
-            renderCalendar();
-        }
+        html += '</div>';
+    }
 
-        function nextMonth() {
-            if (calendarMonth === 11) {
-                calendarMonth = 0;
-                calendarYear++;
-            } else {
-                calendarMonth++;
-            }
-            renderCalendar();
-        }
+    daysContainer.innerHTML = html;
+}
 
-        // Модальное окно
-        function openModal(holidayId) {
-            const holiday = allHolidays.find(h => h.id === holidayId);
-            if (!holiday) return;
-            
-            document.getElementById('modalTitle').textContent = holiday.name;
-            document.getElementById('modalDescription').textContent = holiday.description;
-            
-            // Бейджи
-            const badgesHtml = `
+function prevMonth() {
+    if (calendarMonth === 0) {
+        calendarMonth = 11;
+        calendarYear--;
+    } else {
+        calendarMonth--;
+    }
+    loadHolidays();
+}
+
+function nextMonth() {
+    if (calendarMonth === 11) {
+        calendarMonth = 0;
+        calendarYear++;
+    } else {
+        calendarMonth++;
+    }
+    loadHolidays();
+}
+
+// Модальное окно
+function openModal(holidayId) {
+    const holiday = allHolidays.find(h => h.id === holidayId);
+    if (!holiday) return;
+
+    document.getElementById('modalTitle').textContent = holiday.name;
+    document.getElementById('modalDescription').textContent = holiday.description;
+
+    // Бейджи
+    const badgesHtml = `
                 <span class="type-badge type-${holiday.type}">${typeLabels[holiday.type]}</span>
                 <span class="date-badge">${holiday.day} ${monthNames[holiday.month]}</span>
             `;
-            document.getElementById('modalBadges').innerHTML = badgesHtml;
-            
-            // Мероприятия
-            const eventsList = document.getElementById('modalEvents');
-            if (holiday.events && holiday.events.length > 0) {
-                eventsList.innerHTML = holiday.events.map(event => `<li>${event}</li>`).join('');
-            } else {
-                eventsList.innerHTML = '<li>Мероприятия не запланированы</li>';
-            }
-            
-            // Wikipedia ссылка
-            const wikiLink = document.getElementById('modalWiki');
-            if (holiday.wikipedia_url) {
-                wikiLink.href = holiday.wikipedia_url;
-                wikiLink.style.display = 'inline-block';
-            } else {
-                wikiLink.style.display = 'none';
-            }
-            
-            // Загружаем внешние данные
-            loadExternalData(holidayId);
-            
-            document.getElementById('holidayModal').classList.add('active');
-            currentHolidayId = holidayId;
-        }
+    document.getElementById('modalBadges').innerHTML = badgesHtml;
 
-        // Загрузка внешних данных для праздника
-        async function loadExternalData(holidayId) {
-            // Показываем индикатор загрузки
-            showLoadingIndicator();
-            
-            try {
-                // Получаем информацию о празднике
-                const holiday = allHolidays.find(h => h.id === holidayId);
-                if (!holiday) return;
-                
-                // Всегда используем текущий год для праздника
-                const today = new Date();
-                const holidayYear = today.getFullYear();
-                
-                // Формируем дату праздника в текущем году
-                const holidayDate = new Date(holidayYear, holiday.month, holiday.day);
-                
-                console.log('Дата праздника:', holidayDate.toLocaleDateString('ru-RU'));
-                console.log('Дней до/после:', Math.ceil((holidayDate - today) / (1000 * 60 * 60 * 24)));
-                
-                // Загружаем только погоду за дату праздника
-                await loadHolidayWeather(holidayDate);
-                
-            } catch (error) {
-                console.error('Ошибка загрузки внешних данных:', error);
-            } finally {
-                hideLoadingIndicator();
-            }
-        }
+    // Мероприятия
+    const eventsList = document.getElementById('modalEvents');
+    if (holiday.events && holiday.events.length > 0) {
+        eventsList.innerHTML = holiday.events.map(event => `<li>${event}</li>`).join('');
+    } else {
+        eventsList.innerHTML = '<li>Мероприятия не запланированы</li>';
+    }
 
-        // Получение геолокации при загрузке сайта
-        function getUserLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        userLocation = {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
-                        };
-                        console.log('Геолокация получена:', userLocation);
-                    },
-                    (error) => {
-                        console.log('Геолокация недоступна:', error);
-                        // Используем координаты Москвы по умолчанию
-                        userLocation = {
-                            latitude: 55.75,
-                            longitude: 37.61
-                        };
-                    }
-                );
-            } else {
+    // Wikipedia ссылка
+    const wikiLink = document.getElementById('modalWiki');
+    if (holiday.wikipedia_url) {
+        wikiLink.href = holiday.wikipedia_url;
+        wikiLink.style.display = 'inline-block';
+    } else {
+        wikiLink.style.display = 'none';
+    }
+
+    // Загружаем внешние данные
+    loadExternalData(holidayId);
+
+    document.getElementById('holidayModal').classList.add('active');
+    currentHolidayId = holidayId;
+}
+
+// Загрузка внешних данных для праздника
+async function loadExternalData(holidayId) {
+    // Показываем индикатор загрузки
+    showLoadingIndicator();
+
+    try {
+        // Получаем информацию о празднике
+        const holiday = allHolidays.find(h => h.id === holidayId);
+        if (!holiday) return;
+
+        // Всегда используем текущий год для праздника
+        const today = new Date();
+        const holidayYear = today.getFullYear();
+
+        // Формируем дату праздника в текущем году
+        const holidayDate = new Date(holidayYear, holiday.month, holiday.day);
+
+        console.log('Дата праздника:', holidayDate.toLocaleDateString('ru-RU'));
+        console.log('Дней до/после:', Math.ceil((holidayDate - today) / (1000 * 60 * 60 * 24)));
+
+        // Загружаем только погоду за дату праздника
+        await loadHolidayWeather(holidayDate);
+
+    } catch (error) {
+        console.error('Ошибка загрузки внешних данных:', error);
+    } finally {
+        hideLoadingIndicator();
+    }
+}
+
+// Получение геолокации при загрузке сайта
+function getUserLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                userLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
+                console.log('Геолокация получена:', userLocation);
+            },
+            (error) => {
+                console.log('Геолокация недоступна:', error);
                 // Используем координаты Москвы по умолчанию
                 userLocation = {
                     latitude: 55.75,
                     longitude: 37.61
                 };
             }
-        }
+        );
+    } else {
+        // Используем координаты Москвы по умолчанию
+        userLocation = {
+            latitude: 55.75,
+            longitude: 37.61
+        };
+    }
+}
 
-        // Загрузка погоды за дату праздника
-        async function loadHolidayWeather(holidayDate) {
-            if (!userLocation) {
-                console.log('Геолокация еще не получена');
-                return;
-            }
-            
-            try {
-                const { latitude, longitude } = userLocation;
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                holidayDate.setHours(0, 0, 0, 0);
-                
-                const daysUntilHoliday = Math.ceil((holidayDate - today) / (1000 * 60 * 60 * 24));
-                console.log('Дней до праздника:', daysUntilHoliday);
-                console.log('Дата праздника:', holidayDate.toLocaleDateString('ru-RU'));
-                
-                // Форматируем дату для API
-                const dateString = holidayDate.toISOString().split('T')[0]; // YYYY-MM-DD
-                
-                let weatherData;
-                let weatherType;
-                
-                // Запрашиваем погоду для конкретной даты
-                const response = await fetch(`${API_URL}/external/weather?lat=${latitude}&lon=${longitude}&date=${dateString}`);
-                
-                if (response.ok) {
-                    weatherData = await response.json();
-                    
-                    // Определяем тип данных на основе ответа
-                    if (weatherData.type === 'historical_climate') {
-                        weatherType = 'passed';
-                        console.log('Используем исторические климатические данные');
-                    } else if (weatherData.type === 'future_climate') {
-                        weatherType = 'future';
-                        console.log('Используем будущие климатические данные');
-                    } else {
-                        weatherType = 'forecast';
-                        console.log('Используем прогноз погоды');
-                    }
-                } else {
-                    // Fallback на старую логику
-                    if (daysUntilHoliday >= 0 && daysUntilHoliday <= 7) {
-                        const response = await fetch(`${API_URL}/external/weather?lat=${latitude}&lon=${longitude}&days=7`);
-                        weatherData = await response.json();
-                        weatherType = 'forecast';
-                        console.log('Используем прогноз погоды (fallback)');
-                    } else {
-                        // Климатические данные как запасной вариант
-                        const month = holidayDate.getMonth();
-                        const climateData = {
-                            0: { temp: -5, desc: "Снег", humidity: 85, wind: 12, code: 71 },
-                            1: { temp: -3, desc: "Снег с дождем", humidity: 80, wind: 11, code: 73 },
-                            2: { temp: 2, desc: "Снег с дождем", humidity: 75, wind: 10, code: 61 },
-                            3: { temp: 8, desc: "Переменная облачность", humidity: 65, wind: 8, code: 2 },
-                            4: { temp: 15, desc: "Ясно", humidity: 60, wind: 7, code: 0 },
-                            5: { temp: 20, desc: "Ясно", humidity: 55, wind: 6, code: 0 },
-                            6: { temp: 22, desc: "Преимущественно ясно", humidity: 50, wind: 6, code: 1 },
-                            7: { temp: 21, desc: "Преимущественно ясно", humidity: 55, wind: 6, code: 1 },
-                            8: { temp: 15, desc: "Переменная облачность", humidity: 65, wind: 7, code: 2 },
-                            9: { temp: 8, desc: "Пасмурно", humidity: 70, wind: 8, code: 3 },
-                            10: { temp: 2, desc: "Переменная облачность", humidity: 75, wind: 9, code: 2 },
-                            11: { temp: -3, desc: "Снег", humidity: 80, wind: 11, code: 71 }
-                        };
-                        
-                        const monthData = climateData[month] || { temp: 15, desc: "Переменная облачность", humidity: 65, wind: 10, code: 2 };
-                        
-                        weatherData = {
-                            current: {
-                                temperature_2m: monthData.temp,
-                                relativehumidity_2m: monthData.humidity,
-                                windspeed_10m: monthData.wind,
-                                weathercode: monthData.code
-                            },
-                            forecast: {},
-                            source: 'OpenMeteo (климатические данные)',
-                            type: daysUntilHoliday < 0 ? 'passed' : 'future'
-                        };
-                        
-                        weatherType = daysUntilHoliday < 0 ? 'passed' : 'future';
-                        console.log('Используем климатические данные (fallback)');
-                    }
-                }
-                
-                if (weatherData) {
-                    addWeatherToModal(weatherData, holidayDate, daysUntilHoliday, weatherType);
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки погоды:', error);
-            }
-        }
+// Загрузка погоды за дату праздника
+async function loadHolidayWeather(holidayDate) {
+    if (!userLocation) {
+        console.log('Геолокация еще не получена');
+        return;
+    }
 
-        // Добавление погоды в модальное окно
-        function addWeatherToModal(weatherData, holidayDate, daysUntilHoliday, weatherType) {
-            const current = weatherData.current || weatherData; // OpenMeteo возвращает данные напрямую
-            const forecast = weatherData.forecast || {};
-            
-            // Определяем тип погоды для заголовка
-            let weatherTitle = 'Погода';
-            if (weatherType === 'passed') {
-                weatherTitle = 'Погода';
-            } else if (weatherType === 'future') {
-                weatherTitle = 'Ожидаемая погода';
-            } else if (daysUntilHoliday === 0) {
-                weatherTitle = 'Погода сегодня';
-            } else if (daysUntilHoliday > 0 && daysUntilHoliday <= 7) {
-                weatherTitle = 'Прогноз погоды';
+    try {
+        const { latitude, longitude } = userLocation;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        holidayDate.setHours(0, 0, 0, 0);
+
+        const daysUntilHoliday = Math.ceil((holidayDate - today) / (1000 * 60 * 60 * 24));
+        console.log('Дней до праздника:', daysUntilHoliday);
+        console.log('Дата праздника:', holidayDate.toLocaleDateString('ru-RU'));
+
+        // Форматируем дату для API
+        const dateString = holidayDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+        let weatherData;
+        let weatherType;
+
+        // Запрашиваем погоду для конкретной даты
+        const response = await fetch(`${API_URL}/external/weather?lat=${latitude}&lon=${longitude}&date=${dateString}`);
+
+        if (response.ok) {
+            weatherData = await response.json();
+
+            // Определяем тип данных на основе ответа
+            if (weatherData.type === 'historical_climate') {
+                weatherType = 'passed';
+                console.log('Используем исторические климатические данные');
+            } else if (weatherData.type === 'future_climate') {
+                weatherType = 'future';
+                console.log('Используем будущие климатические данные');
+            } else {
+                weatherType = 'forecast';
+                console.log('Используем прогноз погоды');
             }
-            
-            // Ищем погоду на конкретную дату праздника
-            let targetTemp = current.temperature_2m || 0;
-            let targetWeatherCode = current.weathercode || 0;
-            let weatherDescription = 'Переменная облачность';
-            
-            // Для климатических данных (прошедших и будущих) используем средние значения для месяца
-            if (weatherType === 'passed' || weatherType === 'future') {
-                const holidayMonth = new Date(holidayDate).getMonth();
+        } else {
+            // Fallback на старую логику
+            if (daysUntilHoliday >= 0 && daysUntilHoliday <= 7) {
+                const response = await fetch(`${API_URL}/external/weather?lat=${latitude}&lon=${longitude}&days=7`);
+                weatherData = await response.json();
+                weatherType = 'forecast';
+                console.log('Используем прогноз погоды (fallback)');
+            } else {
+                // Климатические данные как запасной вариант
+                const month = holidayDate.getMonth();
                 const climateData = {
-                    0: { temp: -5, desc: "Снег", humidity: 85, wind: 12 },      // Январь
-                    1: { temp: -3, desc: "Снег", humidity: 82, wind: 11 },      // Февраль
-                    2: { temp: 2, desc: "Снег с дождем", humidity: 78, wind: 10 }, // Март
-                    3: { temp: 10, desc: "Переменная облачность", humidity: 68, wind: 9 }, // Апрель
-                    4: { temp: 17, desc: "Ясно", humidity: 60, wind: 8 },       // Май
-                    5: { temp: 22, desc: "Ясно", humidity: 55, wind: 7 },       // Июнь
-                    6: { temp: 24, desc: "Ясно", humidity: 58, wind: 6 },       // Июль
-                    7: { temp: 23, desc: "Переменная облачность", humidity: 62, wind: 7 }, // Август
-                    8: { temp: 17, desc: "Переменная облачность", humidity: 70, wind: 9 }, // Сентябрь
-                    9: { temp: 10, desc: "Дождь", humidity: 78, wind: 11 },      // Октябрь
-                    10: { temp: 3, desc: "Дождь с мокрым снегом", humidity: 83, wind: 12 }, // Ноябрь
-                    11: { temp: -2, desc: "Снег", humidity: 86, wind: 13 }       // Декабрь
+                    0: { temp: -5, desc: "Снег", humidity: 85, wind: 12, code: 71 },
+                    1: { temp: -3, desc: "Снег с дождем", humidity: 80, wind: 11, code: 73 },
+                    2: { temp: 2, desc: "Снег с дождем", humidity: 75, wind: 10, code: 61 },
+                    3: { temp: 8, desc: "Переменная облачность", humidity: 65, wind: 8, code: 2 },
+                    4: { temp: 15, desc: "Ясно", humidity: 60, wind: 7, code: 0 },
+                    5: { temp: 20, desc: "Ясно", humidity: 55, wind: 6, code: 0 },
+                    6: { temp: 22, desc: "Преимущественно ясно", humidity: 50, wind: 6, code: 1 },
+                    7: { temp: 21, desc: "Преимущественно ясно", humidity: 55, wind: 6, code: 1 },
+                    8: { temp: 15, desc: "Переменная облачность", humidity: 65, wind: 7, code: 2 },
+                    9: { temp: 8, desc: "Пасмурно", humidity: 70, wind: 8, code: 3 },
+                    10: { temp: 2, desc: "Переменная облачность", humidity: 75, wind: 9, code: 2 },
+                    11: { temp: -3, desc: "Снег", humidity: 80, wind: 11, code: 71 }
                 };
-                
-                const monthData = climateData[holidayMonth] || { temp: 15, desc: "Переменная облачность", humidity: 65, wind: 10 };
-                targetTemp = monthData.temp;
-                weatherDescription = monthData.desc;
-                
-                // Обновляем данные для отображения
-                current.relativehumidity_2m = monthData.humidity;
-                current.windspeed_10m = monthData.wind;
-            } else if (forecast.time && forecast.temperature_2m_max) {
-                // Для ближайших 7 дней используем реальные данные прогноза
-                const holidayDateObj = new Date(holidayDate);
-                const holidayDateString = holidayDateObj.toISOString().split('T')[0];
-                
-                // Ищем индекс даты в прогнозе
-                const dateIndex = forecast.time.findIndex(date => date === holidayDateString);
-                if (dateIndex !== -1) {
-                    targetTemp = forecast.temperature_2m_max[dateIndex] || forecast.temperature_2m_min[dateIndex] || 0;
-                    targetWeatherCode = forecast.weathercode[dateIndex] || 0;
-                }
-                
-                // Конвертируем weather code в описание
-                const weatherDescriptions = {
-                    0: "Ясно", 1: "Преимущественно ясно", 2: "Переменная облачность", 3: "Пасмурно",
-                    45: "Туман", 48: "Туман с инеем", 51: "Легкая морось", 53: "Умеренная морось",
-                    55: "Плотная морось", 56: "Легкая ледяная морось", 57: "Умеренная ледяная морось",
-                    61: "Слабый дождь", 63: "Умеренный дождь", 65: "Сильный дождь",
-                    71: "Слабый снег", 73: "Умеренный снег", 75: "Сильный снег",
-                    80: "Слабые ливни", 81: "Умеренные ливни", 82: "Сильные ливни",
-                    95: "Гроза", 96: "Гроза с градом"
-                };
-                
-                weatherDescription = weatherDescriptions[targetWeatherCode] || 'Переменная облачность';
-            }
-            
-            const humidity = current.relativehumidity_2m;
-            const windSpeed = current.windspeed_10m;
-            
-            // Добавляем информацию о типе данных
-            let dataSource = weatherData.source || 'OpenMeteo';
-            if ((weatherType === 'passed' || weatherType === 'future') && !dataSource.includes('климатические')) {
-                dataSource += ' (климатические данные)';
-            }
 
-            // Получаем название местоположения
-            const locationName = weatherData.location_name || '';
-            
-            const currentYear = new Date().getFullYear();
-            const weatherHtml = `
+                const monthData = climateData[month] || { temp: 15, desc: "Переменная облачность", humidity: 65, wind: 10, code: 2 };
+
+                weatherData = {
+                    current: {
+                        temperature_2m: monthData.temp,
+                        relativehumidity_2m: monthData.humidity,
+                        windspeed_10m: monthData.wind,
+                        weathercode: monthData.code
+                    },
+                    forecast: {},
+                    source: 'OpenMeteo (климатические данные)',
+                    type: daysUntilHoliday < 0 ? 'passed' : 'future'
+                };
+
+                weatherType = daysUntilHoliday < 0 ? 'passed' : 'future';
+                console.log('Используем климатические данные (fallback)');
+            }
+        }
+
+        if (weatherData) {
+            addWeatherToModal(weatherData, holidayDate, daysUntilHoliday, weatherType);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки погоды:', error);
+    }
+}
+
+// Добавление погоды в модальное окно
+function addWeatherToModal(weatherData, holidayDate, daysUntilHoliday, weatherType) {
+    const current = weatherData.current || weatherData; // OpenMeteo возвращает данные напрямую
+    const forecast = weatherData.forecast || {};
+
+    // Определяем тип погоды для заголовка
+    let weatherTitle = 'Погода';
+    if (weatherType === 'passed') {
+        weatherTitle = 'Погода';
+    } else if (weatherType === 'future') {
+        weatherTitle = 'Ожидаемая погода';
+    } else if (daysUntilHoliday === 0) {
+        weatherTitle = 'Погода сегодня';
+    } else if (daysUntilHoliday > 0 && daysUntilHoliday <= 7) {
+        weatherTitle = 'Прогноз погоды';
+    }
+
+    // Ищем погоду на конкретную дату праздника
+    let targetTemp = current.temperature_2m || 0;
+    let targetWeatherCode = current.weathercode || 0;
+    let weatherDescription = 'Переменная облачность';
+
+    // Для климатических данных (прошедших и будущих) используем средние значения для месяца
+    if (weatherType === 'passed' || weatherType === 'future') {
+        const holidayMonth = new Date(holidayDate).getMonth();
+        const climateData = {
+            0: { temp: -5, desc: "Снег", humidity: 85, wind: 12 },      // Январь
+            1: { temp: -3, desc: "Снег", humidity: 82, wind: 11 },      // Февраль
+            2: { temp: 2, desc: "Снег с дождем", humidity: 78, wind: 10 }, // Март
+            3: { temp: 10, desc: "Переменная облачность", humidity: 68, wind: 9 }, // Апрель
+            4: { temp: 17, desc: "Ясно", humidity: 60, wind: 8 },       // Май
+            5: { temp: 22, desc: "Ясно", humidity: 55, wind: 7 },       // Июнь
+            6: { temp: 24, desc: "Ясно", humidity: 58, wind: 6 },       // Июль
+            7: { temp: 23, desc: "Переменная облачность", humidity: 62, wind: 7 }, // Август
+            8: { temp: 17, desc: "Переменная облачность", humidity: 70, wind: 9 }, // Сентябрь
+            9: { temp: 10, desc: "Дождь", humidity: 78, wind: 11 },      // Октябрь
+            10: { temp: 3, desc: "Дождь с мокрым снегом", humidity: 83, wind: 12 }, // Ноябрь
+            11: { temp: -2, desc: "Снег", humidity: 86, wind: 13 }       // Декабрь
+        };
+
+        const monthData = climateData[holidayMonth] || { temp: 15, desc: "Переменная облачность", humidity: 65, wind: 10 };
+        targetTemp = monthData.temp;
+        weatherDescription = monthData.desc;
+
+        // Обновляем данные для отображения
+        current.relativehumidity_2m = monthData.humidity;
+        current.windspeed_10m = monthData.wind;
+    } else if (forecast.time && forecast.temperature_2m_max) {
+        // Для ближайших 7 дней используем реальные данные прогноза
+        const holidayDateObj = new Date(holidayDate);
+        const holidayDateString = holidayDateObj.toISOString().split('T')[0];
+
+        // Ищем индекс даты в прогнозе
+        const dateIndex = forecast.time.findIndex(date => date === holidayDateString);
+        if (dateIndex !== -1) {
+            targetTemp = forecast.temperature_2m_max[dateIndex] || forecast.temperature_2m_min[dateIndex] || 0;
+            targetWeatherCode = forecast.weathercode[dateIndex] || 0;
+        }
+
+        // Конвертируем weather code в описание
+        const weatherDescriptions = {
+            0: "Ясно", 1: "Преимущественно ясно", 2: "Переменная облачность", 3: "Пасмурно",
+            45: "Туман", 48: "Туман с инеем", 51: "Легкая морось", 53: "Умеренная морось",
+            55: "Плотная морось", 56: "Легкая ледяная морось", 57: "Умеренная ледяная морось",
+            61: "Слабый дождь", 63: "Умеренный дождь", 65: "Сильный дождь",
+            71: "Слабый снег", 73: "Умеренный снег", 75: "Сильный снег",
+            80: "Слабые ливни", 81: "Умеренные ливни", 82: "Сильные ливни",
+            95: "Гроза", 96: "Гроза с градом"
+        };
+
+        weatherDescription = weatherDescriptions[targetWeatherCode] || 'Переменная облачность';
+    }
+
+    const humidity = current.relativehumidity_2m;
+    const windSpeed = current.windspeed_10m;
+
+    // Добавляем информацию о типе данных
+    let dataSource = weatherData.source || 'OpenMeteo';
+    if ((weatherType === 'passed' || weatherType === 'future') && !dataSource.includes('климатические')) {
+        dataSource += ' (климатические данные)';
+    }
+
+    // Получаем название местоположения
+    const locationName = weatherData.location_name || '';
+
+    const currentYear = new Date().getFullYear();
+    const weatherHtml = `
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;" class="weather-section">
                     <h3 style="color: #5A5A40; margin-bottom: 15px;">🌤️ ${weatherTitle} на ${new Date(holidayDate).toLocaleDateString('ru-RU')} (${currentYear} год)</h3>
                     ${locationName ? `<p style="color: #5A5A40; font-weight: 600; margin-bottom: 15px;">📍 ${locationName}</p>` : ''}
@@ -795,26 +890,26 @@ async function addHoliday() {
                     </div>
                 </div>
             `;
-            
-            // Добавляем погоду в конец модального окна
-            const modalBody = document.querySelector('.modal-body');
-            modalBody.insertAdjacentHTML('beforeend', weatherHtml);
-        }
 
-        // Индикатор загрузки
-        function showLoadingIndicator() {
-            const indicator = document.createElement('div');
-            indicator.id = 'loading-indicator';
-            indicator.innerHTML = '<div style="text-align: center; padding: 20px;">⏳ Загрузка данных...</div>';
-            document.querySelector('.modal-body').appendChild(indicator);
-        }
+    // Добавляем погоду в конец модального окна
+    const modalBody = document.querySelector('.modal-body');
+    modalBody.insertAdjacentHTML('beforeend', weatherHtml);
+}
 
-        function hideLoadingIndicator() {
-            const indicator = document.getElementById('loading-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
+// Индикатор загрузки
+function showLoadingIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'loading-indicator';
+    indicator.innerHTML = '<div style="text-align: center; padding: 20px;">⏳ Загрузка данных...</div>';
+    document.querySelector('.modal-body').appendChild(indicator);
+}
+
+function hideLoadingIndicator() {
+    const indicator = document.getElementById('loading-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
 
 // Админ панель
 function showAdminPanel() {
@@ -835,7 +930,7 @@ function showAdminPanel() {
         animation: fadeIn 0.3s ease;
         overflow-y: auto;
     `;
-    
+
     adminPanel.innerHTML = `
         <div class="admin-panel">
             <div class="admin-section">
@@ -913,7 +1008,7 @@ function showAdminPanel() {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(adminPanel);
     loadAdminStats();
 }
@@ -933,7 +1028,7 @@ function loadAdminStats() {
             const total = holidays.length;
             const eco = holidays.filter(h => h.type === 'eco').length;
             const national = holidays.filter(h => h.type === 'national').length;
-            
+
             document.getElementById('totalHolidays').textContent = total;
             document.getElementById('ecoHolidays').textContent = eco;
             document.getElementById('nationalHolidays').textContent = national;
@@ -941,7 +1036,7 @@ function loadAdminStats() {
         .catch(error => {
             console.error('Ошибка загрузки статистики:', error);
         });
-    
+
     // Загрузка статистики пользователей (если есть эндпоинт)
     // Временно установим значение по умолчанию
     document.getElementById('totalUsers').textContent = '2';
@@ -952,15 +1047,15 @@ function exportHolidays() {
         .then(response => response.json())
         .then(holidays => {
             const dataStr = JSON.stringify(holidays, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
             const exportFileDefaultName = `holidays_${new Date().toISOString().split('T')[0]}.json`;
-            
+
             const linkElement = document.createElement('a');
             linkElement.setAttribute('href', dataUri);
             linkElement.setAttribute('download', exportFileDefaultName);
             linkElement.click();
-            
+
             alert('📤 Данные экспортированы успешно!');
         })
         .catch(error => {
@@ -979,6 +1074,7 @@ function clearCache() {
 
 async function showUserManagement() {
     const userManagementPanel = document.createElement('div');
+    userManagementPanel.id = 'user-management-panel';
     userManagementPanel.style.cssText = `
         position: fixed;
         top: 0;
@@ -993,7 +1089,7 @@ async function showUserManagement() {
         padding-top: 50px;
         animation: fadeIn 0.3s ease;
     `;
-    
+
     userManagementPanel.innerHTML = `
         <div class="admin-panel">
             <div class="admin-section">
@@ -1010,16 +1106,16 @@ async function showUserManagement() {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(userManagementPanel);
-    
+
     // Загружаем пользователей
     await loadUsers();
 }
 
 function closeUserManagement() {
-    const panel = document.querySelector('div[style*="position: fixed"]');
-    if (panel && panel.innerHTML.includes('Управление пользователями')) {
+    const panel = document.getElementById('user-management-panel');
+    if (panel) {
         panel.remove();
     }
 }
@@ -1027,7 +1123,7 @@ function closeUserManagement() {
 async function loadUsers() {
     try {
         console.log('Loading users from:', `${API_URL}/admin/users`);
-        
+
         const response = await fetch(`${API_URL}/admin/users`, {
             method: 'GET',
             headers: {
@@ -1035,22 +1131,22 @@ async function loadUsers() {
                 'Accept': 'application/json'
             }
         });
-        
+
         console.log('Response status:', response.status);
         console.log('Response headers:', response.headers);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Error response:', errorText);
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
-        
+
         const users = await response.json();
         console.log('Users loaded:', users.length);
-        
+
         const container = document.getElementById('usersTableContainer');
         if (!container) return;
-        
+
         if (users.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -1061,7 +1157,7 @@ async function loadUsers() {
             `;
             return;
         }
-        
+
         let tableHtml = `
             <div class="admin-table-container">
                 <table class="admin-table">
@@ -1077,14 +1173,14 @@ async function loadUsers() {
                     </thead>
                     <tbody>
         `;
-        
+
         users.forEach(user => {
             const roleInfo = getRoleInfo(user.role);
             const roleLabel = roleInfo.label;
             const roleClass = roleInfo.class;
             const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : 'Неизвестно';
             const fullName = `${user.last_name} ${user.first_name}`.trim();
-            
+
             tableHtml += `
                 <tr>
                     <td>${user.id}</td>
@@ -1105,15 +1201,15 @@ async function loadUsers() {
                 </tr>
             `;
         });
-        
+
         tableHtml += `
                     </tbody>
                 </table>
             </div>
         `;
-        
+
         container.innerHTML = tableHtml;
-        
+
     } catch (error) {
         console.error('Ошибка загрузки пользователей:', error);
         console.error('Error details:', {
@@ -1121,7 +1217,7 @@ async function loadUsers() {
             message: error.message,
             stack: error.stack
         });
-        
+
         const container = document.getElementById('usersTableContainer');
         if (container) {
             const errorMessage = error.message || 'Неизвестная ошибка';
@@ -1145,11 +1241,11 @@ async function loadUsers() {
 async function toggleUserRole(userId, currentRole) {
     const newRole = currentRole === 1 ? 0 : 1;
     const action = newRole === 1 ? 'назначить администратором' : 'сделать пользователем';
-    
+
     if (!confirm(`Вы уверены, что хотите ${action} этого пользователя?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_URL}/admin/users/${userId}/role`, {
             method: 'PUT',
@@ -1158,7 +1254,7 @@ async function toggleUserRole(userId, currentRole) {
             },
             body: JSON.stringify({ role: newRole })
         });
-        
+
         if (response.ok) {
             const result = await response.json();
             alert(`✅ ${result.message}`);
@@ -1177,12 +1273,12 @@ async function deleteUser(userId, email) {
     if (!confirm(`Вы уверены, что хотите удалить пользователя ${email}?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_URL}/admin/users/${userId}`, {
             method: 'DELETE'
         });
-        
+
         if (response.ok) {
             const result = await response.json();
             alert(`✅ ${result.message}`);
@@ -1215,7 +1311,7 @@ async function testAllAPIs() {
         max-height: 80vh;
         overflow-y: auto;
     `;
-    
+
     resultsDiv.innerHTML = `
         <h2 style="color: #5A5A40; margin-bottom: 20px;">🔧 Тест внешних API</h2>
         <div id="test-results">
@@ -1226,12 +1322,12 @@ async function testAllAPIs() {
             Закрыть
         </button>
     `;
-    
+
     document.body.appendChild(resultsDiv);
-    
+
     const testResults = document.getElementById('test-results');
     let results = [];
-    
+
     // Тест 1: Погода (OpenMeteo)
     try {
         const response = await fetch(`${API_URL}/external/weather?lat=55.75&lon=37.61&days=3`);
@@ -1250,7 +1346,7 @@ async function testAllAPIs() {
             color: '#f44336'
         });
     }
-    
+
     // Тест 2: Поиск местоположений (2ГИС)
     try {
         const response = await fetch(`${API_URL}/external/locations/search?query=парк`);
@@ -1269,7 +1365,7 @@ async function testAllAPIs() {
             color: '#f44336'
         });
     }
-    
+
     // Тест 4: Экологические новости (NewsAPI)
     try {
         const response = await fetch(`${API_URL}/external/eco-news`);
@@ -1288,7 +1384,7 @@ async function testAllAPIs() {
             color: '#f44336'
         });
     }
-    
+
     // Отображаем результаты
     testResults.innerHTML = results.map(result => `
         <div style="margin-bottom: 15px; padding: 15px; background: ${result.color}20; border-left: 4px solid ${result.color}; border-radius: 8px;">
@@ -1300,11 +1396,11 @@ async function testAllAPIs() {
             </div>
         </div>
     `).join('');
-    
+
     // Добавляем общую статистику
     const workingCount = results.filter(r => r.status.includes('✅')).length;
     const totalCount = results.length;
-    
+
     testResults.insertAdjacentHTML('beforeend', `
         <div style="margin-top: 20px; padding: 15px; background: #f5f5f0; border-radius: 8px; text-align: center;">
             <div style="font-size: 18px; font-weight: bold; color: #5A5A40;">
@@ -1320,7 +1416,7 @@ async function testAllAPIs() {
 // Поиск местоположений
 async function searchLocations(query) {
     if (!query.trim()) return [];
-    
+
     try {
         const response = await fetch(`${API_URL}/external/locations/search?query=${encodeURIComponent(query)}&limit=5`);
         const data = await response.json();
@@ -1336,7 +1432,7 @@ async function loadEcoNews() {
     try {
         const response = await fetch(`${API_URL}/external/eco-news`);
         const data = await response.json();
-        
+
         if (data.articles && data.articles.length > 0) {
             displayEcoNews(data.articles);
         }
@@ -1349,7 +1445,7 @@ async function loadEcoNews() {
 function displayEcoNews(articles) {
     const newsContainer = document.getElementById('newsContainer');
     if (!newsContainer) return;
-    
+
     const newsHtml = `
         <div class="eco-news" style="padding: 20px; background: #f0f8f0; border-radius: 10px; border: 1px solid #4caf50;">
             <h3 style="color: #2e7d32; margin-bottom: 15px;">🌍 Экологические новости</h3>
@@ -1363,14 +1459,14 @@ function displayEcoNews(articles) {
             <small style="color: #999; display: block; margin-top: 15px;">Источник: NewsAPI</small>
         </div>
     `;
-    
+
     newsContainer.innerHTML = newsHtml;
 }
 
 function closeModal() {
     document.getElementById('holidayModal').classList.remove('active');
     currentHolidayId = null;
-    
+
     // Очищаем внешние данные из модального окна
     clearExternalData();
 }
@@ -1378,23 +1474,23 @@ function closeModal() {
 // Очистка внешних данных из модального окна
 function clearExternalData() {
     const modalBody = document.querySelector('.modal-body');
-    
+
     // Удаляем индикатор загрузки если есть
     const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) {
         loadingIndicator.remove();
     }
-    
+
     // Находим и удаляем секции с погодой
     const sections = modalBody.querySelectorAll('div');
-    
+
     sections.forEach(section => {
         const text = section.textContent;
         if (text.includes('🌤️')) {
             section.remove();
         }
     });
-    
+
     // Ищем и удаляем секции по классам и тексту заголовков
     const allDivs = modalBody.querySelectorAll('div');
     allDivs.forEach(div => {
@@ -1406,13 +1502,13 @@ function clearExternalData() {
                 return; // Выходим из forEach для этого элемента
             }
         }
-        
+
         // Также удаляем по классам
         if (div.classList.contains('weather-section')) {
             div.remove();
         }
     });
-    
+
     // Дополнительная очистка - ищем секции с изображениями
     const imageSections = modalBody.querySelectorAll('div img');
     imageSections.forEach(img => {
@@ -1423,14 +1519,14 @@ function clearExternalData() {
     });
 }
 
-        async function deleteCurrentHoliday() {
+async function deleteCurrentHoliday() {
     if (!currentHolidayId) return;
     if (!currentUser || currentUser.role !== 1) {
         alert('Только администратор может удалять праздники');
         return;
     }
     if (!confirm('Вы уверены, что хотите удалить этот праздник?')) return;
-    
+
     try {
         await fetch(`${API_URL}/holidays/${currentHolidayId}`, { method: 'DELETE' });
         closeModal();
@@ -1440,35 +1536,35 @@ function clearExternalData() {
     }
 }
 
-        // Фильтры
-        function setFilter(type, value, button) {
-            currentFilters[type] = value;
-            
-            button.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-            button.classList.add('active');
-            
-            applyFilters();
-        }
+// Фильтры
+function setFilter(type, value, button) {
+    currentFilters[type] = value;
 
-        function applyFilters() {
-            currentFilters.search = document.getElementById('searchInput').value;
-            loadHolidays();
-        }
+    button.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    button.classList.add('active');
 
-        // Закрытие модального окна по клику вне его
-        document.getElementById('holidayModal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
+    applyFilters();
+}
 
-        // Закрытие модального окна авторизации по клику вне его
-        document.getElementById('authModal').addEventListener('click', function(e) {
-            if (e.target === this) closeAuthModal();
-        });
+function applyFilters() {
+    currentFilters.search = document.getElementById('searchInput').value;
+    loadHolidays();
+}
 
-        
-        
-        
-        // Функции для работы с картой
+// Закрытие модального окна по клику вне его
+document.getElementById('holidayModal').addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+});
+
+// Закрытие модального окна авторизации по клику вне его
+document.getElementById('authModal').addEventListener('click', function (e) {
+    if (e.target === this) closeAuthModal();
+});
+
+
+
+
+// Функции для работы с картой
 let map = null;
 let markers = [];
 let mapUserLocation = null;
@@ -1476,18 +1572,18 @@ let mapUserLocation = null;
 async function initializeMap() {
     const mapContainer = document.getElementById('map');
     const placeholder = document.getElementById('mapPlaceholder');
-    
+
     // Инициализируем простую карту с использованием OpenStreetMap
     if (!map) {
         try {
             // Получаем геолокацию пользователя
             const position = await getCurrentPosition();
             mapUserLocation = position;
-            
+
             // Создаем iframe с OpenStreetMap
             const lat = position.lat;
             const lon = position.lon;
-            
+
             mapContainer.innerHTML = `
                 <iframe 
                     width="100%" 
@@ -1496,14 +1592,14 @@ async function initializeMap() {
                     scrolling="no" 
                     marginheight="0" 
                     marginwidth="0" 
-                    src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.1},${lat-0.1},${lon+0.1},${lat+0.1}&layer=mapnik&marker=${lat},${lon}"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.1},${lat - 0.1},${lon + 0.1},${lat + 0.1}&layer=mapnik&marker=${lat},${lon}"
                     style="border-radius: 10px;">
                 </iframe>
             `;
-            
+
             // Автоматически ищем ближайшие парки
             await findNearbyParks();
-            
+
         } catch (error) {
             console.error('Ошибка инициализации карты:', error);
             placeholder.innerHTML = `
@@ -1550,14 +1646,14 @@ async function searchLocation() {
         alert('Введите название места для поиска');
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_URL}/external/locations/search?query=${encodeURIComponent(query)}&limit=5`);
         const data = await response.json();
-        
+
         if (data.locations && data.locations.length > 0) {
             displayPlaces(data.locations);
-            
+
             // Обновляем карту с первым найденным местом
             const firstPlace = data.locations[0];
             updateMap(firstPlace.lat, firstPlace.lon, firstPlace.display_name);
@@ -1574,14 +1670,14 @@ async function findNearbyParks() {
     if (!mapUserLocation) {
         mapUserLocation = await getCurrentPosition();
     }
-    
+
     try {
         const response = await fetch(`${API_URL}/external/locations/nearby?lat=${mapUserLocation.lat}&lon=${mapUserLocation.lon}&radius=5000`);
         const data = await response.json();
-        
+
         if (data.locations && data.locations.length > 0) {
             displayPlaces(data.locations);
-            
+
             // Добавляем маркеры на карту
             data.locations.forEach(place => {
                 addMapMarker(place.lat, place.lon, place.display_name, place.class);
@@ -1598,7 +1694,7 @@ async function findNearbyParks() {
 function displayPlaces(places) {
     const container = document.getElementById('placesContent');
     container.innerHTML = '';
-    
+
     if (places.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -1609,16 +1705,16 @@ function displayPlaces(places) {
         `;
         return;
     }
-    
+
     places.forEach(place => {
         const placeDiv = document.createElement('div');
         placeDiv.className = 'place-item';
-        
+
         const name = place.display_name.split(',')[0];
         const fullName = place.display_name;
         const type = place.type || place.class;
         const distance = place.distance;
-        
+
         placeDiv.innerHTML = `
             <div class="place-info">
                 <h4>${name}</h4>
@@ -1654,7 +1750,7 @@ function updateMap(lat, lon, title) {
             scrolling="no" 
             marginheight="0" 
             marginwidth="0" 
-            src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.05},${lat-0.05},${lon+0.05},${lat+0.05}&layer=mapnik&marker=${lat},${lon}"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.05},${lat - 0.05},${lon + 0.05},${lat + 0.05}&layer=mapnik&marker=${lat},${lon}"
             style="border-radius: 10px;">
         </iframe>
     `;
@@ -1672,5 +1768,6 @@ function addMapMarker(lat, lon, title, type) {
 }
 
 // Первая загрузка
-        getUserLocation(); // Получаем геолокацию сразу
-        loadHolidays();
+getUserLocation();
+initMonthSelect();
+loadHolidays();
