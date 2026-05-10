@@ -6,7 +6,18 @@ let currentHolidayId = null;
 let currentUser = null; 
 let calendarMonth = new Date().getMonth(); 
 let calendarYear = new Date().getFullYear();
-let userLocation = null; 
+let userLocation = null;
+
+// Конфигурация ролей — легко добавлять/удалять/изменять
+const USER_ROLES = {
+    0: { label: 'Пользователь', class: 'user', icon: '👤' },
+    1: { label: 'Администратор', class: 'admin', icon: '👑' },
+};
+
+// Вспомогательная функция для получения данных роли
+function getRoleInfo(role) {
+    return USER_ROLES[role] || { label: 'Неизвестно', class: 'unknown', icon: '❓' };
+}
 
 // Проверка при загрузке
 if (localStorage.getItem('user')) {
@@ -59,6 +70,11 @@ if (localStorage.getItem('user')) {
         document.getElementById('userArea').style.display = 'none';
         document.getElementById('adminArea').style.display = 'flex';
         document.getElementById('userName').textContent = currentUser.name;
+
+        // Отображение роли
+        const roleInfo = getRoleInfo(currentUser.role);
+        const userNameEl = document.getElementById('userName');
+        userNameEl.textContent = `${roleInfo.icon} ${currentUser.name} (${roleInfo.label})`;
         
         // Показываем кнопки админа только для админов
         const adminBtns = document.querySelectorAll('.admin-only');
@@ -684,7 +700,7 @@ async function addHoliday() {
             // Определяем тип погоды для заголовка
             let weatherTitle = 'Погода';
             if (weatherType === 'passed') {
-                weatherTitle = 'Погода была';
+                weatherTitle = 'Погода';
             } else if (weatherType === 'future') {
                 weatherTitle = 'Ожидаемая погода';
             } else if (daysUntilHoliday === 0) {
@@ -754,9 +770,7 @@ async function addHoliday() {
             
             // Добавляем информацию о типе данных
             let dataSource = weatherData.source || 'OpenMeteo';
-            if (weatherType === 'passed') {
-                dataSource += ' (климатические данные)';
-            } else if (weatherType === 'future') {
+            if ((weatherType === 'passed' || weatherType === 'future') && !dataSource.includes('климатические')) {
                 dataSource += ' (климатические данные)';
             }
 
@@ -826,7 +840,7 @@ function showAdminPanel() {
         <div class="admin-panel">
             <div class="admin-section">
                 <h2>⚙️ Панель администратора</h2>
-                <button class="btn-admin danger" onclick="closeAdminPanel()" style="float: right;">✖ Закрыть</button>
+                <button class="btn-admin danger" onclick="closeAdminPanel()" style="float: right; margin-bottom: 15px;">✖ Закрыть</button>
             </div>
             
             <div class="admin-stats">
@@ -892,7 +906,7 @@ function showAdminPanel() {
                 <div style="margin-top: 10px; font-family: monospace; font-size: 14px;">
                     <div>Версия: 1.0.0</div>
                     <div>Пользователь: <span id="currentUserEmail">${currentUser?.email || 'Не авторизован'}</span></div>
-                    <div>Роль: <span id="currentUserRole">${currentUser?.role === 1 ? 'Администратор' : 'Пользователь'}</span></div>
+                    <div>Роль: <span id="currentUserRole">${getRoleInfo(currentUser?.role).label}</span></div>
                     <div>База данных: SQLite</div>
                     <div>API сервер: http://127.0.0.1:8000</div>
                 </div>
@@ -1065,8 +1079,9 @@ async function loadUsers() {
         `;
         
         users.forEach(user => {
-            const roleLabel = user.role === 1 ? 'Администратор' : 'Пользователь';
-            const roleClass = user.role === 1 ? 'admin' : 'user';
+            const roleInfo = getRoleInfo(user.role);
+            const roleLabel = roleInfo.label;
+            const roleClass = roleInfo.class;
             const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : 'Неизвестно';
             const fullName = `${user.last_name} ${user.first_name}`.trim();
             
