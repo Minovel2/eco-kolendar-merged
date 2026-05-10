@@ -964,11 +964,11 @@ body {
 
 .auth-modal-content .close-btn {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
+    top: 15px;
+    right: 15px;
+    background: #f0f0f0;
+    border: 2px solid #ddd;
+    color: #666;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -978,11 +978,13 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    z-index: 10;
 }
 
 .auth-modal-content .close-btn:hover {
-    background: rgba(255, 255, 255, 0.4);
-    transform: rotate(90deg);
+    background: #f44336;
+    color: white;
+    border-color: #f44336;
 }
 
 #authForm, #holidayForm {

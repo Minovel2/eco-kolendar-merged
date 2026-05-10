@@ -686,7 +686,7 @@ async function addHoliday() {
             if (weatherType === 'passed') {
                 weatherTitle = 'Погода была';
             } else if (weatherType === 'future') {
-                weatherTitle = 'Примерная погода';
+                weatherTitle = 'Ожидаемая погода';
             } else if (daysUntilHoliday === 0) {
                 weatherTitle = 'Погода сегодня';
             } else if (daysUntilHoliday > 0 && daysUntilHoliday <= 7) {
@@ -759,11 +759,15 @@ async function addHoliday() {
             } else if (weatherType === 'future') {
                 dataSource += ' (климатические данные)';
             }
+
+            // Получаем название местоположения
+            const locationName = weatherData.location_name || '';
             
             const currentYear = new Date().getFullYear();
             const weatherHtml = `
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;" class="weather-section">
                     <h3 style="color: #5A5A40; margin-bottom: 15px;">🌤️ ${weatherTitle} на ${new Date(holidayDate).toLocaleDateString('ru-RU')} (${currentYear} год)</h3>
+                    ${locationName ? `<p style="color: #5A5A40; font-weight: 600; margin-bottom: 15px;">📍 ${locationName}</p>` : ''}
                     <div style="display: flex; align-items: center; gap: 15px; padding: 10px; background: #f5f5f0; border-radius: 8px;">
                         <div>
                             <div style="font-size: 24px; font-weight: bold;">${Math.round(targetTemp)}°C</div>

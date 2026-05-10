@@ -120,17 +120,49 @@ async def get_weather_for_holiday(
 ):
     """Получить прогноз погоды для праздника"""
     if date:
-        # Получаем погоду для конкретной даты
         weather_data = await weather_api.get_weather_for_date(lat, lon, date)
     else:
-        # Получаем прогноз на несколько дней
         weather_data = await weather_api.get_weather_forecast(lat, lon, days)
     
     if not weather_data:
         raise HTTPException(status_code=404, detail="Не удалось получить данные о погоде")
     
-    # Возвращаем данные напрямую от OpenMeteo
+    # Добавляем информацию о местоположении
+    location_name = await get_location_name(lat, lon)
+    if location_name:
+        weather_data["location_name"] = location_name
+    
     return weather_data
+
+async def get_location_name(lat: float, lon: float) -> str:
+    """Получить название местоположения по координатам"""
+    try:
+        # Используем Nominatim (OpenStreetMap) для обратного геокодирования
+        import urllib.request, json
+        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&accept-language=ru"
+        req = urllib.request.Request(url, headers={'User-Agent': 'EcoKolendar/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            address = data.get('address', {})
+            # Пробуем получить город, деревню, посёлок или район
+            location = (
+                address.get('city') or 
+                address.get('town') or 
+                address.get('village') or 
+                address.get('municipality') or
+                address.get('county') or
+                address.get('state') or
+                data.get('display_name', '').split(',')[0]
+            )
+            if location:
+                # Добавляем страну для контекста
+                country = address.get('country', '')
+                if country and country != location:
+                    return f"{location}, {country}"
+                return location
+    except Exception as e:
+        print(f"Ошибка получения названия местоположения: {e}")
+    return None
 
 @app.get("/api/external/news/{holiday_id}")
 async def get_news_for_holiday(
