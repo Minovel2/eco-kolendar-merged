@@ -619,33 +619,53 @@ class EmailService:
         else:
             print(f"✅ Email сервис настроен для: {self.email_user}")
     
-    async def send_welcome_email(self, user_email: str, user_name: str) -> bool:
+    async def send_welcome_email(self, user_email: str, user_name: str, custom_message: str = None) -> bool:
         """Отправка приветственного письма при регистрации"""
-        # Проверяем конфигурацию перед отправкой
+        # Проверяем конфигурацию
         if not self.email_user or not self.email_password:
-            print("❌ Email не настроен - пропускаю отправку приветственного письма")
+            print("❌ Email не настроен - пропускаю отправку письма")
             return False
-            
+        
         if self.email_user == "your-email@gmail.com":
-            print("❌ Используются плейсхолдеры - пропускаю отправку приветственного письма")
+            print("❌ Используются плейсхолдеры - пропускаю отправку письма")
             return False
-            
+        
         try:
-            html_content = self._get_welcome_template(user_name)
-            
+            if custom_message:
+                # Для импорта — простое письмо с паролем
+                html_content = self._get_simple_template(user_name, custom_message)
+                subject = "Ваш аккаунт в Эко-календаре"
+            else:
+                html_content = self._get_welcome_template(user_name)
+                subject = "Добро пожаловать в Эко-календарь!"
+        
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = "Добро пожаловать в Эко-календарь!"
+            msg['Subject'] = subject
             msg['From'] = f"Эко-календарь <{self.from_email}>"
             msg['To'] = user_email
-            
+        
             html_part = MIMEText(html_content, 'html', 'utf-8')
             msg.attach(html_part)
-            
+        
             return await self._send_email(msg)
-            
+        
         except Exception as e:
-            print(f"❌ Ошибка отправки приветственного письма: {e}")
+            print(f"❌ Ошибка отправки письма: {e}")
             return False
+
+    def _get_simple_template(self, user_name: str, message: str) -> str:
+        """Простой шаблон для импортированных пользователей"""
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>🌿 Эко-календарь</h2>
+            <p>Здравствуйте, {user_name}!</p>
+            <p>{message}</p>
+        </body>
+        </html>
+        """
     
     async def _send_email(self, msg: MIMEMultipart) -> bool:
         """Отправка email через SMTP"""

@@ -10,6 +10,9 @@ from .seed import seed_database
 from .models import User, WorkDay
 from .schemas import UserRegister, UserLogin, UserResponse, HolidayUpdate
 from .external_apis import WeatherAPI, weather_api, news_api, geocoding_api, email_service
+import secrets
+import string
+from datetime import datetime
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -403,3 +406,68 @@ async def delete_user(
     db.commit()
     
     return {"message": f"Пользователь {user.email} удалён"}
+
+@app.post("/api/admin/users/import")
+async def import_users(users_data: dict, db: Session = Depends(get_db)):
+    """Импорт пользователей из JSON с генерацией случайных паролей"""
+    users = users_data.get("users", [])
+    imported = 0
+    skipped = 0
+    errors = 0
+    new_users_passwords = []  # Для вывода админу
+    
+    for user_data in users:
+        if not user_data.get("email") or not user_data.get("last_name") or not user_data.get("first_name"):
+            errors += 1
+            continue
+        
+        # Проверяем дубликат по email
+        existing = db.query(User).filter(User.email == user_data["email"]).first()
+        if existing:
+            skipped += 1
+            continue
+        
+        try:
+            # Генерируем случайный пароль
+            alphabet = string.ascii_letters + string.digits
+            password = ''.join(secrets.choice(alphabet) for _ in range(12))
+            hashed = crud.hash_password(password)
+            
+            user = User(
+                last_name=user_data["last_name"],
+                first_name=user_data["first_name"],
+                patronymic=user_data.get("patronymic"),
+                email=user_data["email"],
+                password=hashed,
+                role=user_data.get("role", 0),
+                created_at=datetime.now()
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            
+            # Отправляем пароль на почту
+            user_name = f"{user.first_name} {user.last_name}"
+            try:
+                await email_service.send_welcome_email(
+                    user_email=user.email, 
+                    user_name=user_name,
+                    custom_message=f"Ваш временный пароль: {password}\n\nРекомендуем сменить его при первом входе."
+                )
+            except Exception as e:
+                print(f"Ошибка отправки письма: {e}")
+            
+            new_users_passwords.append({"email": user.email, "password": password})
+            imported += 1
+            
+        except Exception as e:
+            print(f"Ошибка импорта пользователя {user_data.get('email')}: {e}")
+            errors += 1
+    
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+        "passwords": new_users_passwords,
+        "message": f"Импортировано: {imported}, пропущено: {skipped}, ошибок: {errors}"
+    }

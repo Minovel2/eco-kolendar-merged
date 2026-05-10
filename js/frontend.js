@@ -1094,8 +1094,12 @@ async function showUserManagement() {
         <div class="admin-panel">
             <div class="admin-section">
                 <h2>👥 Управление пользователями</h2>
-                <button class="btn-admin success" onclick="showAddUserForm()" style="margin-bottom: 15px;">➕ Добавить пользователя</button>
-                <button class="btn-admin danger" onclick="closeUserManagement()" style="float: right;">✖ Закрыть</button>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn-admin success" onclick="showAddUserForm()">➕ Добавить пользователя</button>
+                    <button class="btn-admin info" onclick="exportUsers()">📤 Экспорт пользователей</button>
+                    <button class="btn-admin secondary" onclick="importUsers()">📥 Импорт пользователей</button>
+                    <button class="btn-admin danger" onclick="closeUserManagement()" style="float: right;">✖ Закрыть</button>
+                </div>
             </div>
             
             <div class="admin-section">
@@ -1232,6 +1236,88 @@ function closeUserManagement() {
     if (panel) {
         panel.remove();
     }
+}
+
+// Экспорт пользователей
+async function exportUsers() {
+    try {
+        const response = await fetch(`${API_URL}/admin/users`);
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        
+        const users = await response.json();
+        
+        const exportData = users.map(u => ({
+            last_name: u.last_name,
+            first_name: u.first_name,
+            patronymic: u.patronymic || null,
+            email: u.email,
+            role: u.role
+        }));
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `users_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('Ошибка при экспорте пользователей');
+    }
+}
+
+// Импорт пользователей
+async function importUsers() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const users = JSON.parse(text);
+            
+            if (!Array.isArray(users)) {
+                alert('Неверный формат файла. Ожидается массив пользователей.');
+                return;
+            }
+            
+            const response = await fetch(`${API_URL}/admin/users/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ users: users })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                
+                let message = `✅ Импорт завершён:\n- Добавлено: ${result.imported}\n- Пропущено (дубликаты): ${result.skipped}\n- Ошибок: ${result.errors}`;
+                
+                if (result.passwords && result.passwords.length > 0) {
+                    message += '\n\n🔑 Сгенерированные пароли:\n';
+                    result.passwords.forEach(p => {
+                        message += `${p.email}: ${p.password}\n`;
+                    });
+                    message += '\n⚠️ Сохраните пароли! Они отправлены пользователям на почту.';
+                }
+                
+                alert(message);
+                await loadUsers();
+            } else {
+                alert('Ошибка при импорте');
+            }
+            
+        } catch (error) {
+            alert('Ошибка чтения файла. Убедитесь, что это корректный JSON.');
+        }
+    };
+    
+    input.click();
 }
 
 async function loadUsers() {
