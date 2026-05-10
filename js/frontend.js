@@ -1,6 +1,6 @@
 const API_URL = 'http://127.0.0.1:8000/api';
 let currentFilters = { type: 'all', region: 'all', search: '' };
-let currentView = 'grid';
+let currentView = 'calendar';
 let allHolidays = [];
 let currentHolidayId = null;
 let currentUser = null; 
@@ -39,6 +39,8 @@ if (localStorage.getItem('user')) {
             
             if (view === 'calendar') {
                 renderCalendar();
+            } else if (view === 'grid') {
+                renderGrid();
             } else if (view === 'map') {
                 // Инициализируем карту при переключении на вид карты
                 setTimeout(() => {
@@ -796,13 +798,6 @@ async function addHoliday() {
             }
         }
 
-function hideLoadingIndicator() {
-    const indicator = document.getElementById('loading-indicator');
-    if (indicator) {
-        indicator.remove();
-    }
-}
-
 // Админ панель
 function showAdminPanel() {
     const adminPanel = document.createElement('div');
@@ -1459,34 +1454,6 @@ let map = null;
 let markers = [];
 let mapUserLocation = null;
 
-function switchView(view) {
-    // Скрываем все виды
-    document.getElementById('gridView').style.display = 'none';
-    document.getElementById('calendarView').style.display = 'none';
-    document.getElementById('newsView').style.display = 'none';
-    document.getElementById('mapView').style.display = 'none';
-    
-    // Убираем активный класс со всех кнопок
-    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-    
-    // Показываем выбранный вид
-    switch(view) {
-        case 'grid':
-            document.getElementById('gridView').style.display = 'block';
-            document.querySelector('.view-btn[onclick="switchView(\'grid\')"]').classList.add('active');
-            break;
-        case 'calendar':
-            document.getElementById('calendarView').style.display = 'block';
-            document.querySelector('.view-btn[onclick="switchView(\'calendar\')"]').classList.add('active');
-            break;
-        case 'map':
-            document.getElementById('mapView').style.display = 'block';
-            document.querySelector('.view-btn[onclick="switchView(\'map\')"]').classList.add('active');
-            initializeMap();
-            break;
-    }
-}
-
 async function initializeMap() {
     const mapContainer = document.getElementById('map');
     const placeholder = document.getElementById('mapPlaceholder');
@@ -1688,4 +1655,3 @@ function addMapMarker(lat, lon, title, type) {
 // Первая загрузка
         getUserLocation(); // Получаем геолокацию сразу
         loadHolidays();
-        loadEcoNews();

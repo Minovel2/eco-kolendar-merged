@@ -793,7 +793,7 @@ def seed_database():
         
         # Добавляем производственный календарь
         if db.query(WorkDay).count() == 0:
-            for work_day_data in WORK_CALENDAR_2026:
+            for work_day_data in WORK_DAYS_2026:
                 work_day = WorkDay(**work_day_data)
                 db.add(work_day)
             db.commit()
