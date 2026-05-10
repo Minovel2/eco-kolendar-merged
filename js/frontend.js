@@ -211,7 +211,7 @@ async function register() {
     const data = {
         last_name: document.getElementById('regLastName').value,
         first_name: document.getElementById('regFirstName').value,
-        patronymic: document.getElementById('regPatronymic').value || '',
+        patronymic: document.getElementById('regPatronymic').value || null,
         email: document.getElementById('regEmail').value,
         password: document.getElementById('regPassword').value
     };
@@ -1094,6 +1094,7 @@ async function showUserManagement() {
         <div class="admin-panel">
             <div class="admin-section">
                 <h2>👥 Управление пользователями</h2>
+                <button class="btn-admin success" onclick="showAddUserForm()" style="margin-bottom: 15px;">➕ Добавить пользователя</button>
                 <button class="btn-admin danger" onclick="closeUserManagement()" style="float: right;">✖ Закрыть</button>
             </div>
             
@@ -1111,6 +1112,119 @@ async function showUserManagement() {
 
     // Загружаем пользователей
     await loadUsers();
+}
+
+function showAddUserForm() {
+    // Удаляем старую форму если есть
+    const oldForm = document.getElementById('add-user-form-modal');
+    if (oldForm) oldForm.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'add-user-form-modal';
+    modal.className = 'modal active';
+    modal.style.zIndex = '10001';
+    modal.onclick = function (e) { if (e.target === this) this.remove(); };
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="document.getElementById('add-user-form-modal').remove()" style="color: white;">✕</button>
+                <h2 style="color: white; font-size: 22px;">➕ Новый пользователь</h2>
+            </div>
+            <div class="modal-body">
+                <div class="auth-form" style="box-shadow: none; padding: 0;">
+                    <div class="form-group">
+                        <label for="addLastName">Фамилия</label>
+                        <input type="text" id="addLastName" placeholder="Введите фамилию">
+                    </div>
+                    <div class="form-group">
+                        <label for="addFirstName">Имя</label>
+                        <input type="text" id="addFirstName" placeholder="Введите имя">
+                    </div>
+                    <div class="form-group">
+                        <label for="addPatronymic">Отчество</label>
+                        <input type="text" id="addPatronymic" placeholder="Введите отчество (необязательно)">
+                    </div>
+                    <div class="form-group">
+                        <label for="addEmail">Email</label>
+                        <input type="email" id="addEmail" placeholder="Введите email">
+                    </div>
+                    <div class="form-group">
+                        <label for="addPassword">Пароль</label>
+                        <input type="password" id="addPassword" placeholder="Придумайте пароль">
+                    </div>
+                    <div class="form-group">
+                        <label for="addRole">Роль</label>
+                        <select id="addRole" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                            ${Object.entries(USER_ROLES).map(([value, info]) =>
+        `<option value="${value}">${info.icon} ${info.label}</option>`
+    ).join('')}
+                        </select>
+                    </div>
+                    <button onclick="addUser()" style="margin-top: 10px;">Добавить пользователя</button>
+                    <p class="form-switch" onclick="document.getElementById('add-user-form-modal').remove()">Отмена</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+async function addUser() {
+    const data = {
+        last_name: document.getElementById('addLastName').value,
+        first_name: document.getElementById('addFirstName').value,
+        patronymic: document.getElementById('addPatronymic').value || null,
+        email: document.getElementById('addEmail').value,
+        password: document.getElementById('addPassword').value
+    };
+
+    // Базовая валидация
+    if (!data.last_name || !data.first_name || !data.email || !data.password) {
+        alert('Заполните все обязательные поля');
+        return;
+    }
+
+    if (data.password.length < 6) {
+        alert('Пароль должен быть не менее 6 символов');
+        return;
+    }
+
+    try {
+        // 1. Регистрируем пользователя
+        const response = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert('Ошибка: ' + error.detail);
+            return;
+        }
+
+        const newUser = await response.json();
+
+        // 2. Меняем роль на выбранную
+        const selectedRole = parseInt(document.getElementById('addRole').value);
+        if (selectedRole !== 0) {
+            await fetch(`${API_URL}/admin/users/${newUser.id}/role`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: selectedRole })
+            });
+        }
+
+        // 3. Закрываем форму и обновляем список
+        document.getElementById('add-user-form-modal').remove();
+        alert('✅ Пользователь добавлен');
+        await loadUsers();
+
+    } catch (error) {
+        alert('Ошибка при добавлении пользователя');
+    }
 }
 
 function closeUserManagement() {
@@ -1178,8 +1292,18 @@ async function loadUsers() {
             const roleInfo = getRoleInfo(user.role);
             const roleLabel = roleInfo.label;
             const roleClass = roleInfo.class;
-            const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : 'Неизвестно';
             const fullName = `${user.last_name} ${user.first_name}`.trim();
+            let createdDate = 'Неизвестно';
+            if (user.created_at) {
+                try {
+                    const date = new Date(user.created_at);
+                    if (!isNaN(date.getTime())) {
+                        createdDate = date.toLocaleDateString('ru-RU');
+                    }
+                } catch (e) {
+                    console.log('Ошибка парсинга даты:', e);
+                }
+            }
 
             tableHtml += `
                 <tr>

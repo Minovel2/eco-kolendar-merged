@@ -48,7 +48,7 @@ class HolidayResponse(BaseModel):
 class UserRegister(BaseModel):
     last_name: str
     first_name: str
-    patronymic: Optional[str] = ""
+    patronymic: Optional[str] = None
     email: str
     password: str
 
@@ -60,7 +60,7 @@ class UserResponse(BaseModel):
     id: int
     last_name: str
     first_name: str
-    patronymic: str
+    patronymic: Optional[str] = None
     email: str
     role: int
     

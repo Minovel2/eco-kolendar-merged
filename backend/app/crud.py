@@ -3,6 +3,7 @@ from app import models, schemas
 import hashlib
 from app.models import User
 import json
+from datetime import datetime
 
 def get_holidays(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Holiday).offset(skip).limit(limit).all()
@@ -61,7 +62,8 @@ def create_user(db: Session, user_data):
         patronymic=user_data.patronymic,
         email=user_data.email,
         password=hash_password(user_data.password),
-        role=0
+        role=0,
+        created_at=datetime.now()
     )
     db.add(user)
     db.commit()
