@@ -30,8 +30,7 @@
             </div>
             <div id="adminArea" style="display: none;">
                 <button class="btn-admin" onclick="showAddHolidayForm()">+ Праздник</button>
-                <button class="btn-admin admin-only" onclick="importHolidays()" style="background: #FF9800;">📥
-                    Импорт</button>
+                <button class="btn-admin btn-fav" onclick="showFavorites()">⭐ Избранное</button>
                 <button class="btn-admin admin-only" onclick="showAdminPanel()" style="background: #2196F3;">⚙️
                     Админка</button>
                 <button class="btn-admin admin-only" onclick="testAllAPIs()" style="background: #9C27B0;">� Тест
@@ -150,12 +149,6 @@
                 <ul class="events-list" id="modalEvents"></ul>
                 <a href="#" target="_blank" class="wiki-link" id="modalWiki" style="display: none;">📚 Подробнее в
                     Википедии</a>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="edit-btn" onclick="showEditHolidayForm()"
-                        style="padding: 10px 20px; background: #FF9800; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 14px;">✏️
-                        Редактировать</button>
-                    <button class="delete-btn" onclick="deleteCurrentHoliday()">🗑️ Удалить</button>
-                </div>
             </div>
         </div>
     </div>

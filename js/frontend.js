@@ -102,8 +102,11 @@ function updateUserUI() {
         const adminBtns = document.querySelectorAll('.admin-only');
         adminBtns.forEach(b => b.style.display = currentUser.role === 1 ? 'inline-block' : 'none');
 
-        // Кнопка "+ Праздник" видна только админу
-        document.querySelector('.btn-admin').style.display = currentUser.role === 1 ? 'inline-block' : 'none';
+        // Скрываем кнопку "+ Праздник" для не-админов
+        const addBtn = document.querySelector('.btn-admin[onclick="showAddHolidayForm()"]');
+        if (addBtn) {
+            addBtn.style.display = currentUser.role === 1 ? 'inline-block' : 'none';
+        }
     } else {
         document.getElementById('userArea').style.display = 'flex';
         document.getElementById('adminArea').style.display = 'none';
@@ -523,7 +526,7 @@ async function renderCalendar() {
 
 function showDayHolidays(day, month, year, allMonth = false) {
     let dayHolidays;
-    
+
     if (allMonth) {
         // Показываем все праздники месяца
         dayHolidays = allHolidays.filter(h => h.month === month);
@@ -667,7 +670,7 @@ function nextMonth() {
 }
 
 // Модальное окно
-function openModal(holidayId) {
+async function openModal(holidayId) {
     const holiday = allHolidays.find(h => h.id === holidayId);
     if (!holiday) return;
 
@@ -697,6 +700,54 @@ function openModal(holidayId) {
     } else {
         wikiLink.style.display = 'none';
     }
+
+    // Удаляем старые динамические кнопки перед добавлением новых
+    const oldAdminBtns = document.getElementById('adminBtnsContainer');
+    if (oldAdminBtns) oldAdminBtns.remove();
+
+    // Кнопки админа
+    if (currentUser && currentUser.role === 1) {
+        const adminContainer = document.createElement('div');
+        adminContainer.id = 'adminBtnsContainer';
+        adminContainer.innerHTML = `
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="edit-btn" onclick="showEditHolidayForm()" style="padding: 10px 20px; background: #FF9800; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 14px;">✏️ Редактировать</button>
+        <button class="delete-btn" onclick="deleteCurrentHoliday()">🗑️ Удалить</button>
+    </div>`;
+        document.querySelector('#holidayModal .modal-body').appendChild(adminContainer);
+    }
+
+    // Загружаем избранное для текущего пользователя
+    const favorites = await loadFavorites();
+    const isFavorite = favorites.includes(holidayId);
+
+    // Кнопка избранного (добавить в modalBody)
+    const favBtnHtml = `
+    <div style="margin-top: 15px;">
+        <button onclick="toggleFavorite(${holidayId})" 
+                style="padding: 10px 20px; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600;
+                background: ${isFavorite ? '#FFD700' : '#f5f5f0'}; 
+                color: ${isFavorite ? '#5A5A40' : '#666'};">
+            ${isFavorite ? '⭐ В избранном' : '☆ Добавить в избранное'}
+        </button>
+    </div>
+    `;
+
+    // Удаляем старую кнопку избранного если есть
+    const oldFavBtn = document.getElementById('favButtonContainer');
+    if (oldFavBtn) oldFavBtn.remove();
+
+    // Вставляем новую кнопку с правильными классами
+    const favContainer = document.createElement('div');
+    favContainer.id = 'favButtonContainer';
+    favContainer.innerHTML = `
+<div style="margin-top: 15px;">
+    <button onclick="toggleFavorite(${holidayId})" 
+            class="fav-btn ${isFavorite ? 'active' : 'inactive'}">
+        ${isFavorite ? '⭐ В избранном' : '☆ Добавить в избранное'}
+    </button>
+</div>`;
+    document.querySelector('#holidayModal .modal-body').appendChild(favContainer);
 
     // Загружаем внешние данные
     loadExternalData(holidayId);
@@ -1745,9 +1796,11 @@ function displayEcoNews(articles) {
 function closeModal() {
     document.getElementById('holidayModal').classList.remove('active');
     currentHolidayId = null;
-
-    // Очищаем внешние данные из модального окна
     clearExternalData();
+
+    // Удаляем динамически добавленные кнопки
+    const favContainer = document.getElementById('favButtonContainer');
+    if (favContainer) favContainer.remove();
 }
 
 // Очистка внешних данных из модального окна
@@ -2295,6 +2348,90 @@ function getHolidayWord(count) {
     if (count % 10 === 1 && count % 100 !== 11) return 'праздник';
     if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'праздника';
     return 'праздников';
+}
+
+// Загрузка избранного с сервера
+async function loadFavorites() {
+    if (!currentUser) return [];
+    try {
+        const response = await fetch(`${API_URL}/favorites?user_id=${currentUser.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.map(f => f.holiday_id);
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки избранного:', error);
+    }
+    return [];
+}
+
+// Переключение избранного
+async function toggleFavorite(holidayId) {
+    if (!currentUser) {
+        alert('Войдите в систему, чтобы добавлять в избранное');
+        return;
+    }
+
+    const favorites = await loadFavorites();
+    const isFavorite = favorites.includes(holidayId);
+
+    try {
+        const method = isFavorite ? 'DELETE' : 'POST';
+        const response = await fetch(`${API_URL}/favorites/${holidayId}?user_id=${currentUser.id}`, {
+            method: method
+        });
+
+        if (response.ok) {
+            // Перезагружаем модальное окно
+            openModal(holidayId);
+        }
+    } catch (error) {
+        console.error('Ошибка переключения избранного:', error);
+    }
+}
+
+// Показать избранное
+async function showFavorites() {
+    if (!currentUser) {
+        alert('Войдите в систему, чтобы видеть избранное');
+        return;
+    }
+
+    const favorites = await loadFavorites();
+
+    if (favorites.length === 0) {
+        alert('У вас пока нет избранных праздников');
+        return;
+    }
+
+    // Фильтруем allHolidays по ID из избранного
+    const favHolidays = allHolidays.filter(h => favorites.includes(h.id));
+
+    // Создаём модальное окно со списком
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.zIndex = '2000';
+    modal.onclick = function (e) { if (e.target === this) this.remove(); };
+
+    modal.innerHTML = `
+    <div class="modal-content favorites-modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <button class="close-btn" onclick="this.closest('.modal').remove()" style="color: white;">✕</button>
+            <h2 style="color: white; font-size: 22px;">⭐ Избранные праздники</h2>
+        </div>
+        <div class="modal-body">
+            ${favHolidays.map(h => `
+                <div onclick="document.querySelector('.modal.active[style*=\\'z-index: 2000\\']').remove(); openModal(${h.id})" 
+                     class="fav-item">
+                    <div class="fav-name"><span class="fav-date">${h.day} ${months[h.month]}</span> · ${h.name}</div>
+                    <div class="fav-desc">${h.description.substring(0, 80)}...</div>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+`;
+
+    document.body.appendChild(modal);
 }
 
 // Первая загрузка

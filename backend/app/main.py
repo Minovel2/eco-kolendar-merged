@@ -13,6 +13,7 @@ from .external_apis import WeatherAPI, weather_api, news_api, geocoding_api, ema
 import secrets
 import string
 from datetime import datetime
+from .notifications import send_holiday_notifications
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -471,3 +472,47 @@ async def import_users(users_data: dict, db: Session = Depends(get_db)):
         "passwords": new_users_passwords,
         "message": f"Импортировано: {imported}, пропущено: {skipped}, ошибок: {errors}"
     }
+    
+@app.get("/api/favorites")
+async def get_favorites(user_id: int = Query(...), db: Session = Depends(get_db)):
+    """Получить избранные праздники пользователя"""
+    favorites = db.query(models.Favorite).filter(models.Favorite.user_id == user_id).all()
+    return [{"holiday_id": f.holiday_id} for f in favorites]
+
+@app.post("/api/favorites/{holiday_id}")
+async def add_favorite(holiday_id: int, user_id: int = Query(...), db: Session = Depends(get_db)):
+    """Добавить праздник в избранное"""
+    existing = db.query(models.Favorite).filter(
+        models.Favorite.user_id == user_id,
+        models.Favorite.holiday_id == holiday_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Уже в избранном")
+    
+    favorite = models.Favorite(user_id=user_id, holiday_id=holiday_id)
+    db.add(favorite)
+    db.commit()
+    return {"message": "Добавлено в избранное"}
+
+@app.delete("/api/favorites/{holiday_id}")
+async def remove_favorite(holiday_id: int, user_id: int = Query(...), db: Session = Depends(get_db)):
+    """Удалить праздник из избранного"""
+    favorite = db.query(models.Favorite).filter(
+        models.Favorite.user_id == user_id,
+        models.Favorite.holiday_id == holiday_id
+    ).first()
+    
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Не найдено в избранном")
+    
+    db.delete(favorite)
+    db.commit()
+    return {"message": "Удалено из избранного"}
+
+@app.post("/api/admin/send-notifications")
+async def trigger_notifications():
+    """Запустить рассылку уведомлений о праздниках (для теста)"""
+    from .notifications import send_holiday_notifications
+    sent = send_holiday_notifications()
+    return {"message": f"Рассылка завершена", "sent": sent}
