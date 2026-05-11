@@ -247,39 +247,75 @@ function showAddHolidayForm() {
         return;
     }
 
-    // Удаляем старые формы
-    const oldForm = document.getElementById('holidayForm');
+    // Удаляем старую форму если есть
+    const oldForm = document.getElementById('add-holiday-form-modal');
     if (oldForm) oldForm.remove();
-    const authForm = document.getElementById('authForm');
-    if (authForm) authForm.remove();
 
-    const formHtml = `
-        <div class="auth-form" id="holidayForm" style="max-width: 600px;">
-            <h2 style="color: #5A5A40; margin-bottom: 20px;">➕ Новый праздник</h2>
-            <input type="text" id="newName" placeholder="Название">
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="newDay" placeholder="День" min="1" max="31" style="flex: 1;">
-                <select id="newMonth" style="flex: 1; padding: 12px; border: 2px solid #e0e0d0; border-radius: 12px;">
-                    ${monthNames.map((m, i) => `<option value="${i}">${m}</option>`).join('')}
-                </select>
+    const modal = document.createElement('div');
+    modal.id = 'add-holiday-form-modal';
+    modal.className = 'modal active';
+    modal.style.zIndex = '2001';
+    modal.onclick = function (e) { if (e.target === this) this.remove(); };
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="document.getElementById('add-holiday-form-modal').remove()" style="color: white;">✕</button>
+                <h2 style="color: white; font-size: 22px;">➕ Новый праздник</h2>
             </div>
-            <select id="newType" style="width: 100%; padding: 12px; border: 2px solid #e0e0d0; border-radius: 12px; margin-bottom: 12px;">
-                <option value="eco">Экологический</option>
-                <option value="national">Национальный</option>
-                <option value="world">Мировой</option>
-            </select>
-            <select id="newRegion" style="width: 100%; padding: 12px; border: 2px solid #e0e0d0; border-radius: 12px; margin-bottom: 12px;">
-                <option value="russia">Россия</option>
-                <option value="world">Весь мир</option>
-            </select>
-            <textarea id="newDescription" placeholder="Описание" rows="4" style="width: 100%; padding: 12px; border: 2px solid #e0e0d0; border-radius: 12px; margin-bottom: 12px;"></textarea>
-            <input type="text" id="newEvents" placeholder="Мероприятия (через запятую)">
-            <input type="url" id="newWikiUrl" placeholder="Ссылка на Википедию">
-            <button onclick="addHoliday()">Сохранить</button>
-            <p class="form-switch" onclick="document.getElementById('holidayForm').remove()">Отмена</p>
-        </div>`;
+            <div class="modal-body">
+                <div class="auth-form" style="box-shadow: none; padding: 0;">
+                    <div class="form-group">
+                        <label for="newName">Название</label>
+                        <input type="text" id="newName" placeholder="Введите название праздника">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="newDay">День</label>
+                            <input type="number" id="newDay" placeholder="1-31" min="1" max="31">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="newMonth">Месяц</label>
+                            <select id="newMonth" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                                ${monthNames.map((m, i) => `<option value="${i}">${m}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newType">Тип</label>
+                        <select id="newType" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                            <option value="eco">🌿 Экологический</option>
+                            <option value="national">🇷🇺 Национальный</option>
+                            <option value="world">🌍 Мировой</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="newRegion">Регион</label>
+                        <select id="newRegion" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                            <option value="russia">🇷🇺 Россия</option>
+                            <option value="world">🌍 Весь мир</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="newDescription">Описание</label>
+                        <textarea id="newDescription" placeholder="Введите описание праздника" rows="4" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="newEvents">Мероприятия (через запятую)</label>
+                        <input type="text" id="newEvents" placeholder="Например: Парад, Концерт, Фейерверк">
+                    </div>
+                    <div class="form-group">
+                        <label for="newWikiUrl">Ссылка на Википедию</label>
+                        <input type="url" id="newWikiUrl" placeholder="https://ru.wikipedia.org/...">
+                    </div>
+                    <button onclick="addHoliday()" style="margin-top: 10px;">💾 Сохранить праздник</button>
+                    <p class="form-switch" onclick="document.getElementById('add-holiday-form-modal').remove()">Отмена</p>
+                </div>
+            </div>
+        </div>
+    `;
 
-    document.getElementById('gridView').insertAdjacentHTML('beforebegin', formHtml);
+    document.body.appendChild(modal);
 }
 
 async function addHoliday() {
@@ -314,8 +350,9 @@ async function addHoliday() {
         });
 
         if (response.ok) {
-            document.getElementById('holidayForm').remove();
+            document.getElementById('add-holiday-form-modal').remove();
             loadHolidays();
+            alert('✅ Праздник добавлен');
         }
     } catch (error) {
         alert('Ошибка при добавлении');
