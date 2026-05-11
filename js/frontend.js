@@ -7,6 +7,7 @@ let currentUser = null;
 let calendarMonth = new Date().getMonth();
 let calendarYear = new Date().getFullYear();
 let userLocation = null;
+let quarterMonth = Math.floor(new Date().getMonth() / 3) * 3; // начало квартала
 
 // Конфигурация ролей — легко добавлять/удалять/изменять
 const USER_ROLES = {
@@ -65,8 +66,11 @@ function switchView(view) {
     document.getElementById('gridView').style.display = view === 'grid' ? 'block' : 'none';
     document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
     document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
+    document.getElementById('quarterView').style.display = view === 'quarter' ? 'block' : 'none';
 
-    if (view === 'calendar') {
+    if (view === 'quarter') {
+        renderQuarter();
+    } else if (view === 'calendar') {
         renderCalendar();
     } else if (view === 'grid') {
         renderGrid();
@@ -374,6 +378,8 @@ async function loadHolidays() {
 
         if (currentView === 'grid') {
             renderGrid();
+        } else if (currentView === 'quarter') {
+            renderQuarter();
         } else {
             renderCalendar();
         }
@@ -515,14 +521,21 @@ async function renderCalendar() {
     }
 }
 
-function showDayHolidays(day, month, year) {
-    const dayHolidays = allHolidays.filter(h =>
-        h.day === day && h.month === month
-    );
+function showDayHolidays(day, month, year, allMonth = false) {
+    let dayHolidays;
+    
+    if (allMonth) {
+        // Показываем все праздники месяца
+        dayHolidays = allHolidays.filter(h => h.month === month);
+    } else {
+        dayHolidays = allHolidays.filter(h =>
+            h.day === day && h.month === month
+        );
+    }
 
     if (dayHolidays.length === 0) return;
 
-    const dateStr = `${day} ${monthNames[month]} ${year}`;
+    const dateStr = allMonth ? `${monthNames[month]} ${year}` : `${day} ${monthNames[month]} ${year}`;
 
     const modal = document.createElement('div');
     modal.className = 'modal active';
@@ -534,7 +547,7 @@ function showDayHolidays(day, month, year) {
             <div class="modal-header" style="padding: 30px;">
                 <button class="close-btn" onclick="this.closest('.modal').remove()" style="color: white;">✕</button>
                 <h2 style="color: white; font-size: 22px;">📅 ${dateStr}</h2>
-                <p style="color: rgba(255,255,255,0.8); margin-top: 10px;">Праздники этого дня</p>
+                <p style="color: rgba(255,255,255,0.8); margin-top: 10px;">${allMonth ? 'Все праздники месяца' : 'Праздники этого дня'}</p>
             </div>
             <div class="modal-body" style="padding: 30px;">
                 <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -543,7 +556,7 @@ function showDayHolidays(day, month, year) {
                              style="padding: 15px; background: #f5f5f0; border-radius: 12px; cursor: pointer; transition: all 0.2s; border-left: 4px solid ${h.type === 'eco' ? '#4caf50' : h.type === 'national' ? '#2196F3' : '#9C27B0'};"
                              onmouseover="this.style.transform='translateX(5px)'; this.style.background='#e8f5e9';" 
                              onmouseout="this.style.transform=''; this.style.background='#f5f5f0';">
-                            <div style="font-weight: 600; color: #5A5A40; margin-bottom: 5px;">${h.name}</div>
+                            <div style="font-weight: 600; color: #5A5A40; margin-bottom: 5px;">${h.day} ${months[h.month]} · ${h.name}</div>
                             <div style="font-size: 13px; color: #666;">${h.description.substring(0, 100)}...</div>
                             <div style="margin-top: 8px;">
                                 <span class="type-badge ${typeClasses[h.type]}" style="font-size: 11px;">${typeLabels[h.type]}</span>
@@ -2190,6 +2203,98 @@ function sortHolidays(sortType, button) {
     }
 
     renderGrid();
+}
+
+function renderQuarter() {
+    const quarterNames = ['I квартал', 'II квартал', 'III квартал', 'IV квартал'];
+    const quarterIndex = Math.floor(quarterMonth / 3);
+    document.getElementById('quarterTitle').textContent = `${quarterNames[quarterIndex]} ${calendarYear}`;
+
+    const container = document.getElementById('quarterGrid');
+    let html = '';
+
+    for (let m = quarterMonth; m < quarterMonth + 3; m++) {
+        const monthHolidays = allHolidays.filter(h => h.month === m);
+        const count = monthHolidays.length;
+
+        // Определяем интенсивность
+        let intensity;
+        if (count === 0) intensity = 0;
+        else if (count <= 3) intensity = 1;
+        else if (count <= 6) intensity = 2;
+        else intensity = 3;
+
+        const colors = ['#f5f5f0', '#e8f5e9', '#c8e6c9', '#81c784'];
+        const textColors = ['#999', '#5A5A40', '#5A5A40', 'white'];
+
+        html += `
+            <div class="quarter-month" style="background: ${colors[intensity]};">
+                <div class="quarter-month-header">
+                    <span style="font-weight: 700; font-size: 16px; color: ${textColors[intensity]};">${monthNames[m]}</span>
+                    <span style="font-size: 13px; color: ${textColors[intensity]}; opacity: 0.8;">${count} ${getHolidayWord(count)}</span>
+                </div>
+                <div class="quarter-mini-calendar">
+                    ${renderMiniMonth(m)}
+                </div>
+                ${monthHolidays.length > 0 ? `
+                    <div class="quarter-holidays">
+                        ${monthHolidays.slice(0, 3).map(h => `
+                            <div class="quarter-holiday-item ${h.type}" onclick="event.stopPropagation(); openModal(${h.id})" title="${h.name}">
+                                <span>${h.day} · ${h.name.substring(0, 30)}</span>
+                                <span class="type-badge ${typeClasses[h.type]}" style="font-size: 9px; padding: 2px 6px;">${typeLabels[h.type]}</span>
+                            </div>
+                        `).join('')}
+                        ${monthHolidays.length > 3 ? `<div style="font-size: 11px; color: #5A5A40; text-align: center; cursor: pointer; padding: 5px; background: rgba(255,255,255,0.5); border-radius: 8px; font-weight: 600;" onclick="event.stopPropagation(); showDayHolidays(0, ${m}, ${calendarYear}, true)">+ ещё ${monthHolidays.length - 3}</div>` : ''}
+                    </div>
+                ` : '<div style="font-size: 12px; color: #999; text-align: center; padding: 10px;">Нет праздников</div>'}
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+}
+
+function changeQuarter(delta) {
+    quarterMonth += delta * 3;
+    if (quarterMonth > 11) {
+        quarterMonth = 0;
+        calendarYear++;
+    } else if (quarterMonth < 0) {
+        quarterMonth = 9;
+        calendarYear--;
+    }
+    loadHolidays();
+}
+
+function renderMiniMonth(month) {
+    const firstDay = new Date(calendarYear, month, 1);
+    const lastDay = new Date(calendarYear, month + 1, 0);
+    let startDay = firstDay.getDay() - 1;
+    if (startDay < 0) startDay = 6;
+
+    let html = '<div class="mini-weekdays">';
+    ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => {
+        html += `<span>${d}</span>`;
+    });
+    html += '</div><div class="mini-days">';
+
+    for (let i = 0; i < startDay; i++) {
+        html += '<span class="mini-day empty"></span>';
+    }
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const hasHoliday = allHolidays.some(h => h.day === day && h.month === month);
+        html += `<span class="mini-day ${hasHoliday ? 'has-holiday' : ''}">${day}</span>`;
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function getHolidayWord(count) {
+    if (count % 10 === 1 && count % 100 !== 11) return 'праздник';
+    if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'праздника';
+    return 'праздников';
 }
 
 // Первая загрузка

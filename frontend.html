@@ -21,6 +21,7 @@
             <div class="view-toggle">
                 <button class="view-btn" onclick="switchView('grid')" title="Сетка">📱</button>
                 <button class="view-btn active" onclick="switchView('calendar')" title="Календарь">📅</button>
+                <button class="view-btn" onclick="switchView('quarter')" title="Квартал">📆</button>
                 <button class="view-btn" onclick="switchView('map')" title="Карта">🗺️</button>
             </div>
             <div id="userArea">
@@ -86,6 +87,16 @@
         </div>
     </div>
 
+    <div id="quarterView" style="display: none;">
+        <div class="calendar-container">
+            <div class="calendar-nav">
+                <button onclick="changeQuarter(-1)">◀</button>
+                <h2 id="quarterTitle"></h2>
+                <button onclick="changeQuarter(1)">▶</button>
+            </div>
+            <div class="quarter-grid" id="quarterGrid"></div>
+        </div>
+    </div>
 
     <!-- Контейнер для карты заповедников -->
     <div id="mapView" style="display: none;">

@@ -1591,3 +1591,103 @@ body {
     color: white;
     border-color: #5A5A40;
 }
+
+/* Квартальный вид */
+.quarter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    padding: 20px 0;
+}
+
+@media (max-width: 900px) {
+    .quarter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.quarter-month {
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s;
+}
+
+.quarter-month:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.quarter-month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.quarter-mini-calendar {
+    margin-bottom: 15px;
+}
+
+.quarter-holidays {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.quarter-holiday-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.quarter-holiday-item:hover {
+    background: white;
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Mini calendar */
+.mini-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
+.mini-weekdays span {
+    font-size: 8px;
+    text-align: center;
+    font-weight: 600;
+    opacity: 0.5;
+    text-transform: uppercase;
+}
+
+.mini-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.mini-day {
+    font-size: 9px;
+    text-align: center;
+    padding: 2px;
+    border-radius: 3px;
+}
+
+.mini-day.empty {
+    opacity: 0.3;
+}
+
+.mini-day.has-holiday {
+    background: rgba(255,255,255,0.4);
+    font-weight: 700;
+    border-radius: 50%;
+}
