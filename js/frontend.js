@@ -369,6 +369,8 @@ async function loadHolidays() {
 
         const response = await fetch(`${API_URL}/holidays?${params}`);
         allHolidays = await response.json();
+        // Применяем текущую сортировку
+        sortHolidays(currentSort);
 
         if (currentView === 'grid') {
             renderGrid();
@@ -396,20 +398,30 @@ function renderGrid() {
         return;
     }
 
-    container.innerHTML = allHolidays.map(holiday => `
-                <div class="holiday-card" onclick="openModal(${holiday.id})">
-                    <div class="card-header">
-                        <div class="date-badge">📅 ${holiday.day} ${months[holiday.month]}</div>
-                        <div class="type-badge ${typeClasses[holiday.type]}">${typeLabels[holiday.type]}</div>
-                    </div>
-                    <h2>${holiday.name}</h2>
-                    <p>${holiday.description.substring(0, 150)}...</p>
-                    <div class="card-footer">
-                        <span>📍 ${regionLabels[holiday.region]}</span>
-                        <span>🏷️ ${typeLabels[holiday.type]}</span>
-                    </div>
+    const today = new Date();
+    const currentYear = today.getFullYear();
+
+    container.innerHTML = allHolidays.map(holiday => {
+        // Определяем, прошёл ли праздник в этом году
+        const holidayDate = new Date(currentYear, holiday.month, holiday.day);
+        const isPast = holidayDate < today;
+
+        return `
+            <div class="holiday-card ${isPast ? 'holiday-past' : ''}" onclick="openModal(${holiday.id})">
+                ${isPast ? '<div class="past-badge">✓ Прошёл</div>' : ''}
+                <div class="card-header">
+                    <div class="date-badge">📅 ${holiday.day} ${months[holiday.month]}</div>
+                    <div class="type-badge ${typeClasses[holiday.type]}">${typeLabels[holiday.type]}</div>
                 </div>
-            `).join('');
+                <h2>${holiday.name}</h2>
+                <p>${holiday.description.substring(0, 150)}...</p>
+                <div class="card-footer">
+                    <span>📍 ${regionLabels[holiday.region]}</span>
+                    <span>🏷️ ${typeLabels[holiday.type]}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Календарь
@@ -2151,6 +2163,33 @@ async function checkHolidayDuplicate(name, day, month, excludeId = null) {
         h.id !== excludeId
     );
     return !!duplicate;
+}
+
+let currentSort = 'date-asc'; // сортировка по умолчанию
+
+function sortHolidays(sortType, button) {
+    currentSort = sortType;
+
+    // Обновляем активную кнопку
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    if (button) button.classList.add('active');
+
+    switch (sortType) {
+        case 'date-asc':
+            allHolidays.sort((a, b) => a.month * 31 + a.day - (b.month * 31 + b.day));
+            break;
+        case 'date-desc':
+            allHolidays.sort((a, b) => b.month * 31 + b.day - (a.month * 31 + a.day));
+            break;
+        case 'name-asc':
+            allHolidays.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+            break;
+        case 'name-desc':
+            allHolidays.sort((a, b) => b.name.localeCompare(a.name, 'ru'));
+            break;
+    }
+
+    renderGrid();
 }
 
 // Первая загрузка

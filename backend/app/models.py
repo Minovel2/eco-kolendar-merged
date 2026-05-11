@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, ARRAY, Enum as SQLEnum, DateTime
+from sqlalchemy import ForeignKey
 from sqlalchemy.sql import func
 from app.database import Base
 import enum
@@ -50,3 +51,11 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(Integer, default=UserRole.USER)  # 0 - пользователь, 1 - админ
     created_at = Column(DateTime(timezone=True), server_default=func.now())  # Дата регистрации
+    
+class Favorite(Base):
+    __tablename__ = "favorites"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    holiday_id = Column(Integer, ForeignKey("holidays.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

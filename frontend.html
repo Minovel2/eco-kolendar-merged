@@ -114,6 +114,13 @@
 
     <!-- Контейнер для сетки -->
     <div id="gridView" style="display: none;">
+        <div style="display: flex; gap: 10px; align-items: center; padding: 0 40px 20px; flex-wrap: wrap;">
+            <span style="color: #5A5A40; font-weight: 600;">Сортировка:</span>
+            <button class="sort-btn active" onclick="sortHolidays('date-asc', this)">📅 По дате ↑</button>
+            <button class="sort-btn" onclick="sortHolidays('date-desc', this)">📅 По дате ↓</button>
+            <button class="sort-btn" onclick="sortHolidays('name-asc', this)">🔤 По названию ↑</button>
+            <button class="sort-btn" onclick="sortHolidays('name-desc', this)">🔤 По названию ↓</button>
+        </div>
         <div id="holidaysContainer" class="holidays-grid">
             <div class="loading">Загрузка праздников...</div>
         </div>
