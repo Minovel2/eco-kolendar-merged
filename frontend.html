@@ -132,7 +132,12 @@
                 <ul class="events-list" id="modalEvents"></ul>
                 <a href="#" target="_blank" class="wiki-link" id="modalWiki" style="display: none;">📚 Подробнее в
                     Википедии</a>
-                <button class="delete-btn" onclick="deleteCurrentHoliday()">🗑️ Удалить</button>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="edit-btn" onclick="showEditHolidayForm()"
+                        style="padding: 10px 20px; background: #FF9800; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 14px;">✏️
+                        Редактировать</button>
+                    <button class="delete-btn" onclick="deleteCurrentHoliday()">🗑️ Удалить</button>
+                </div>
             </div>
         </div>
     </div>

@@ -299,6 +299,13 @@ async function addHoliday() {
         wikipedia_url: document.getElementById('newWikiUrl').value
     };
 
+    // Проверка на дубликат
+    const isDuplicate = await checkHolidayDuplicate(data.name, data.day, data.month);
+    if (isDuplicate) {
+        alert('⚠️ Праздник с таким названием уже существует!');
+        return;
+    }
+
     try {
         const response = await fetch(`${API_URL}/holidays`, {
             method: 'POST',
@@ -1243,9 +1250,9 @@ async function exportUsers() {
     try {
         const response = await fetch(`${API_URL}/admin/users`);
         if (!response.ok) throw new Error('Ошибка загрузки');
-        
+
         const users = await response.json();
-        
+
         const exportData = users.map(u => ({
             last_name: u.last_name,
             first_name: u.first_name,
@@ -1253,11 +1260,11 @@ async function exportUsers() {
             email: u.email,
             role: u.role
         }));
-        
+
         const dataStr = JSON.stringify(exportData, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
+
         const link = document.createElement('a');
         link.href = url;
         link.download = `users_${new Date().toISOString().split('T')[0]}.json`;
@@ -1273,31 +1280,31 @@ async function importUsers() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    
+
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         try {
             const text = await file.text();
             const users = JSON.parse(text);
-            
+
             if (!Array.isArray(users)) {
                 alert('Неверный формат файла. Ожидается массив пользователей.');
                 return;
             }
-            
+
             const response = await fetch(`${API_URL}/admin/users/import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ users: users })
             });
-            
+
             if (response.ok) {
                 const result = await response.json();
-                
+
                 let message = `✅ Импорт завершён:\n- Добавлено: ${result.imported}\n- Пропущено (дубликаты): ${result.skipped}\n- Ошибок: ${result.errors}`;
-                
+
                 if (result.passwords && result.passwords.length > 0) {
                     message += '\n\n🔑 Сгенерированные пароли:\n';
                     result.passwords.forEach(p => {
@@ -1305,18 +1312,18 @@ async function importUsers() {
                     });
                     message += '\n⚠️ Сохраните пароли! Они отправлены пользователям на почту.';
                 }
-                
+
                 alert(message);
                 await loadUsers();
             } else {
                 alert('Ошибка при импорте');
             }
-            
+
         } catch (error) {
             alert('Ошибка чтения файла. Убедитесь, что это корректный JSON.');
         }
     };
-    
+
     input.click();
 }
 
@@ -1975,6 +1982,138 @@ function showOnMap(lat, lon) {
 function addMapMarker(lat, lon, title, type) {
     // В будущем здесь можно добавить кастомные маркеры
     console.log(`Добавлен маркер: ${title} (${lat}, ${lon}) - ${type}`);
+}
+
+function showEditHolidayForm() {
+    const holiday = allHolidays.find(h => h.id === currentHolidayId);
+    if (!holiday) return;
+
+    // Закрываем текущее модальное окно
+    document.getElementById('holidayModal').classList.remove('active');
+
+    // Удаляем старую форму если есть
+    const oldForm = document.getElementById('edit-holiday-form-modal');
+    if (oldForm) oldForm.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'edit-holiday-form-modal';
+    modal.className = 'modal active';
+    modal.style.zIndex = '2001';
+    modal.onclick = function (e) { if (e.target === this) { this.remove(); document.getElementById('holidayModal').classList.add('active'); } };
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="document.getElementById('edit-holiday-form-modal').remove(); document.getElementById('holidayModal').classList.add('active');" style="color: white;">✕</button>
+                <h2 style="color: white; font-size: 22px;">✏️ Редактировать праздник</h2>
+            </div>
+            <div class="modal-body">
+                <div class="auth-form" style="box-shadow: none; padding: 0;">
+                    <div class="form-group">
+                        <label for="editName">Название</label>
+                        <input type="text" id="editName" value="${holiday.name.replace(/"/g, '&quot;')}">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editDay">День</label>
+                            <input type="number" id="editDay" value="${holiday.day}" min="1" max="31">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="editMonth">Месяц</label>
+                            <select id="editMonth" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                                ${monthNames.map((m, i) => `<option value="${i}" ${i === holiday.month ? 'selected' : ''}>${m}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editType">Тип</label>
+                        <select id="editType" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                            <option value="eco" ${holiday.type === 'eco' ? 'selected' : ''}>🌿 Экологический</option>
+                            <option value="national" ${holiday.type === 'national' ? 'selected' : ''}>🇷🇺 Национальный</option>
+                            <option value="world" ${holiday.type === 'world' ? 'selected' : ''}>🌍 Мировой</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editRegion">Регион</label>
+                        <select id="editRegion" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">
+                            <option value="russia" ${holiday.region === 'russia' ? 'selected' : ''}>🇷🇺 Россия</option>
+                            <option value="world" ${holiday.region === 'world' ? 'selected' : ''}>🌍 Весь мир</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDescription">Описание</label>
+                        <textarea id="editDescription" rows="4" style="width: 100%; padding: 15px 20px; border: 2px solid #e0e0d0; border-radius: 15px; font-size: 16px; outline: none;">${holiday.description.replace(/"/g, '&quot;')}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editEvents">Мероприятия (через запятую)</label>
+                        <input type="text" id="editEvents" value="${(holiday.events || []).join(', ').replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editWikiUrl">Ссылка на Википедию</label>
+                        <input type="url" id="editWikiUrl" value="${holiday.wikipedia_url || ''}">
+                    </div>
+                    <button onclick="updateHoliday(${holiday.id})" style="margin-top: 10px;">💾 Сохранить изменения</button>
+                    <p class="form-switch" onclick="document.getElementById('edit-holiday-form-modal').remove(); document.getElementById('holidayModal').classList.add('active');">Отмена</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+async function updateHoliday(holidayId) {
+    const events = document.getElementById('editEvents').value
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e);
+
+    const data = {
+        name: document.getElementById('editName').value,
+        day: parseInt(document.getElementById('editDay').value),
+        month: parseInt(document.getElementById('editMonth').value),
+        type: document.getElementById('editType').value,
+        region: document.getElementById('editRegion').value,
+        description: document.getElementById('editDescription').value,
+        events: events,
+        wikipedia_url: document.getElementById('editWikiUrl').value
+    };
+
+    // Проверка на дубликат (исключая текущий праздник)
+    const isDuplicate = await checkHolidayDuplicate(data.name, data.day, data.month, holidayId);
+    if (isDuplicate) {
+        alert('⚠️ Праздник с таким названием уже существует!');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/holidays/${holidayId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            document.getElementById('edit-holiday-form-modal').remove();
+            await loadHolidays();
+            alert('✅ Праздник обновлён');
+        } else {
+            const error = await response.json();
+            alert('Ошибка: ' + error.detail);
+        }
+    } catch (error) {
+        alert('Ошибка при обновлении праздника');
+    }
+}
+
+// Проверка на дубликаты праздников
+async function checkHolidayDuplicate(name, day, month, excludeId = null) {
+    // excludId — ID праздника, который исключаем из проверки (при редактировании)
+    const duplicate = allHolidays.find(h =>
+        h.name.toLowerCase() === name.toLowerCase() &&
+        h.id !== excludeId
+    );
+    return !!duplicate;
 }
 
 // Первая загрузка
