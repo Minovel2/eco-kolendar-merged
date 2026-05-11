@@ -14,6 +14,7 @@ import secrets
 import string
 from datetime import datetime
 from .notifications import send_holiday_notifications
+from prometheus_fastapi_instrumentator import Instrumentator
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -24,6 +25,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+Instrumentator().instrument(app).expose(app)
 
 # Настройка CORS
 app.add_middleware(
@@ -44,52 +47,21 @@ async def startup_event():
 async def root():
     return {"message": "Эко-календарь API работает!"}
 
-# @app.get("/api/import/holidays")
-# async def import_holidays(db: Session = Depends(get_db)):
-#     """Импорт праздников из внешнего API (пример с Calendarific или открытым API)"""
-#     
-#     # Используем бесплатный API с экологическими праздниками
-#     # Это публичный JSON с праздниками ООН
-#     url = "https://date.nager.at/api/v3/PublicHolidays/2026/RU"
-#     
-#     imported_count = 0
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.get(url)
-#             if response.status_code == 200:
-#                 holidays_data = response.json()
-#                 
-#                 for h in holidays_data:
-#                     # Проверяем, нет ли уже такого праздника
-#                     existing = db.query(models.Holiday).filter(
-#                         models.Holiday.name == h['localName'],
-#                         models.Holiday.month == int(h['date'].split('-')[1]) - 1,
-#                         models.Holiday.day == int(h['date'].split('-')[2])
-#                     ).first()
-#                     
-#                     if not existing:
-#                         date_parts = h['date'].split('-')
-#                         new_holiday = models.Holiday(
-#                             name=h['localName'],
-#                             day=int(date_parts[2]),
-#                             month=int(date_parts[1]) - 1,  # 0-indexed
-#                             type="world",
-#                             region="world",
-#                             description=f"Государственный праздник: {h['name']}. Тип: {', '.join(h.get('types', []))}",
-#                             events=json.dumps([]),
-#                             wikipedia_url=""
-#                         )
-#                         db.add(new_holiday)
-#                         imported_count += 1
-#                 
-#                 db.commit()
-#         
-#         return {
-#             "message": f"Импортировано {imported_count} новых праздников",
-#             "count": imported_count
-#         }
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Ошибка импорта: {str(e)}")
+@app.get("/api/import/holidays")
+async def import_holidays(db: Session = Depends(get_db)):
+    """Импорт праздников из 3 внешних API"""
+    from .holiday_importers import HolidayImporter
+    
+    print("📥 Запуск импорта праздников из внешних API...")
+    
+    importer = HolidayImporter(db)
+    results = importer.import_all()
+    
+    return {
+        "message": f"Импорт завершён. Всего добавлено: {results.get('total', 0)} праздников",
+        "total_imported": results.get("total", 0),
+        "sources": results
+    }
 
 @app.get("/api/holidays", response_model=List[schemas.HolidayResponse])
 async def get_holidays(
@@ -516,3 +488,10 @@ async def trigger_notifications():
     from .notifications import send_holiday_notifications
     sent = send_holiday_notifications()
     return {"message": f"Рассылка завершена", "sent": sent}
+
+@app.post("/api/admin/reset-database")
+async def reset_database_endpoint():
+    """Сбросить БД к исходному состоянию (только для админа)"""
+    from .reset_db import reset_database
+    success = reset_database()
+    return {"message": "База данных восстановлена" if success else "Ошибка восстановления"}

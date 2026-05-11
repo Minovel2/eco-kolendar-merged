@@ -202,16 +202,140 @@ async function importHolidays() {
         return;
     }
 
-    if (!confirm('Импортировать праздники из внешнего API? Это добавит новые международные праздники.')) return;
+    if (!confirm('Импортировать праздники из 3 внешних API?\n\nИсточники:\n📅 Nager.Date (бесплатный)\n🎄 Abstract API\n🗓️ Calendarific\n\nЭто может занять некоторое время.')) return;
+
+    // Показываем прогресс
+    const progressModal = document.createElement('div');
+    progressModal.id = 'import-progress';
+    progressModal.className = 'modal active';
+    progressModal.style.zIndex = '10001';
+    progressModal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 style="color: white;">📥 Импорт праздников</h2>
+            </div>
+            <div class="modal-body" id="importResults">
+                <div style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 20px; color: #666;">Импортируем праздники из внешних API...</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 10px;">Это может занять до 30 секунд</p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(progressModal);
 
     try {
         const response = await fetch(`${API_URL}/import/holidays`);
         const data = await response.json();
-        alert(`✅ ${data.message}`);
-        loadHolidays(); // Перезагружаем список
+
+        // Формируем красивый отчёт
+        let resultsHtml = '<h3 style="color: #5A5A40; margin-bottom: 20px;">✅ Импорт завершён!</h3>';
+
+        // Общая статистика
+        resultsHtml += `
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 15px; margin-bottom: 20px; text-align: center;">
+                <div style="font-size: 36px; font-weight: bold; color: #2e7d32;">${data.total_imported}</div>
+                <div style="color: #666; margin-top: 5px;">всего праздников импортировано</div>
+            </div>
+        `;
+
+        // Детали по каждому API
+        const sources = data.sources;
+        if (sources) {
+            resultsHtml += '<div style="display: flex; flex-direction: column; gap: 15px;">';
+
+            // Nager.Date
+            if (sources.nager_date) {
+                const nd = sources.nager_date;
+                resultsHtml += createSourceCard('📅 Nager.Date API', nd, !nd.errors && nd.imported > 0);
+            }
+
+            // Abstract API
+            if (sources.abstract_api) {
+                const aa = sources.abstract_api;
+                resultsHtml += createSourceCard('🎄 Abstract Holidays API', aa, aa.imported > 0);
+            }
+
+            // Calendarific
+            if (sources.calendarific) {
+                const cf = sources.calendarific;
+                resultsHtml += createSourceCard('🗓️ Calendarific API', cf, cf.imported > 0);
+            }
+
+            resultsHtml += '</div>';
+        }
+
+        document.getElementById('importResults').innerHTML = resultsHtml;
+
+        // Добавляем кнопку закрытия
+        setTimeout(() => {
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Закрыть';
+            closeBtn.style.cssText = 'display: block; width: 100%; margin-top: 20px; padding: 15px; background: #5A5A40; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 600;';
+            closeBtn.onclick = () => {
+                document.getElementById('import-progress').remove();
+                loadHolidays();
+            };
+            document.getElementById('importResults').appendChild(closeBtn);
+        }, 500);
+
     } catch (error) {
-        alert('Ошибка импорта');
+        document.getElementById('importResults').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #f44336;">
+                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                <h3>Ошибка импорта</h3>
+                <p>${error.message}</p>
+                <p style="margin-top: 10px; font-size: 12px;">Проверьте консоль для деталей</p>
+            </div>
+        `;
     }
+}
+
+// Вспомогательная функция для карточки источника
+function createSourceCard(title, data, success) {
+    const statusColor = success ? '#4caf50' : '#ff9800';
+    const statusIcon = success ? '✅' : '⚠️';
+    const statusText = success ? 'Успешно' : (data.errors ? 'Частично' : 'Пропущен');
+
+    let typeList = '';
+    if (data.holiday_types && Object.keys(data.holiday_types).length > 0) {
+        typeList = '<div style="margin-top: 10px; font-size: 12px; color: #666;">';
+        Object.entries(data.holiday_types).forEach(([type, count]) => {
+            typeList += `<span style="background: #f0f0f0; padding: 2px 8px; border-radius: 8px; margin-right: 5px;">${type}: ${count}</span>`;
+        });
+        typeList += '</div>';
+    }
+
+    let message = '';
+    if (data.message) {
+        message = `<div style="margin-top: 10px; font-size: 12px; color: #f44336;">ℹ️ ${data.message}</div>`;
+    }
+
+    return `
+        <div style="background: white; border: 2px solid ${statusColor}; border-radius: 15px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: #5A5A40;">${statusIcon} ${title}</h4>
+                <span style="color: ${statusColor}; font-weight: 600;">${statusText}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                <div>
+                    <div style="font-size: 24px; font-weight: bold; color: #2e7d32;">${data.imported || 0}</div>
+                    <div style="font-size: 11px; color: #666;">Добавлено</div>
+                </div>
+                <div>
+                    <div style="font-size: 24px; font-weight: bold; color: #ff9800;">${data.skipped || 0}</div>
+                    <div style="font-size: 11px; color: #666;">Пропущено</div>
+                </div>
+                <div>
+                    <div style="font-size: 24px; font-weight: bold; color: #999;">${data.checked || 0}</div>
+                    <div style="font-size: 11px; color: #666;">Проверено</div>
+                </div>
+            </div>
+            ${typeList}
+            ${message}
+        </div>
+    `;
 }
 
 async function register() {
@@ -1103,6 +1227,10 @@ function showAdminPanel() {
                     <button class="admin-action-btn" onclick="showUserManagement()">
                         <span class="icon">👥</span>
                         <span>Управление пользователями</span>
+                    </button>
+                    <button class="admin-action-btn danger" onclick="resetDatabase()">
+                        <span class="icon">🔄</span>
+                        <span>Сбросить БД</span>
                     </button>
                 </div>
             </div>
@@ -2432,6 +2560,21 @@ async function showFavorites() {
 `;
 
     document.body.appendChild(modal);
+}
+
+async function resetDatabase() {
+    if (!confirm('⚠️ ВНИМАНИЕ!\n\nЭто удалит ВСЕ добавленные праздники и восстановит БД к исходному состоянию.\n\nВы уверены?')) return;
+
+    if (!confirm('ТОЧНО уверены? Это действие нельзя отменить!')) return;
+
+    try {
+        const response = await fetch(`${API_URL}/admin/reset-database`, { method: 'POST' });
+        const data = await response.json();
+        alert(`✅ ${data.message}`);
+        loadHolidays(); // Перезагружаем список
+    } catch (error) {
+        alert('❌ Ошибка сброса БД');
+    }
 }
 
 // Первая загрузка
