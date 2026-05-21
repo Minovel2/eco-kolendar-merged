@@ -1135,6 +1135,9 @@ function addWeatherToModal(weatherData, holidayDate, daysUntilHoliday, weatherTy
                 </div>
             `;
 
+    const oldWeather = document.querySelector('.weather-section');
+    if (oldWeather) oldWeather.remove();
+
     // Добавляем погоду в конец модального окна
     const modalBody = document.querySelector('.modal-body');
     modalBody.insertAdjacentHTML('beforeend', weatherHtml);
@@ -1929,6 +1932,9 @@ function closeModal() {
     // Удаляем динамически добавленные кнопки
     const favContainer = document.getElementById('favButtonContainer');
     if (favContainer) favContainer.remove();
+
+    const weatherSection = document.querySelector('.weather-section');
+    if (weatherSection) weatherSection.remove();
 }
 
 // Очистка внешних данных из модального окна
@@ -2476,6 +2482,16 @@ function getHolidayWord(count) {
     if (count % 10 === 1 && count % 100 !== 11) return 'праздник';
     if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return 'праздника';
     return 'праздников';
+}
+
+function prevYear() {
+    calendarYear--;
+    loadHolidays();
+}
+
+function nextYear() {
+    calendarYear++;
+    loadHolidays();
 }
 
 // Загрузка избранного с сервера

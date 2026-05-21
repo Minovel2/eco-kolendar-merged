@@ -1825,3 +1825,43 @@ body {
 .fav-pop {
     animation: favPop 0.3s ease;
 }
+
+/* Контейнер для года с кнопками +/- */
+.year-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Контейнер для двух кнопок (одна над другой) */
+.year-btns-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Кнопки +/- */
+.year-btn {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #e0e0d0;
+    background: white;
+    color: #5A5A40;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.year-btn:hover {
+    background: #5A5A40;
+    color: white;
+    border-color: #5A5A40;
+}

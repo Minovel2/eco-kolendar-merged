@@ -483,11 +483,20 @@ async def remove_favorite(holiday_id: int, user_id: int = Query(...), db: Sessio
     return {"message": "Удалено из избранного"}
 
 @app.post("/api/admin/send-notifications")
-async def trigger_notifications():
+async def trigger_notifications(db: Session = Depends(get_db)):
     """Запустить рассылку уведомлений о праздниках (для теста)"""
     from .notifications import send_holiday_notifications
-    sent = send_holiday_notifications()
-    return {"message": f"Рассылка завершена", "sent": sent}
+    
+    print("📧 Запуск рассылки уведомлений...")
+    
+    try:
+        sent = send_holiday_notifications(db)
+        return {"message": f"Рассылка завершена", "sent": sent}
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}, 500
 
 @app.post("/api/admin/reset-database")
 async def reset_database_endpoint():

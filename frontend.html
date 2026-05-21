@@ -68,8 +68,14 @@
                 <h2 id="calendarMonthTitle" style="display: none;"></h2>
                 <div class="calendar-date-picker">
                     <select id="monthSelect" class="calendar-month-select" onchange="goToSelectedMonth()"></select>
-                    <input type="number" id="yearInput" class="calendar-year-input" onchange="goToSelectedMonth()"
-                        min="2000" max="2100">
+                    <div class="year-picker-wrapper">
+                        <input type="number" id="yearInput" class="calendar-year-input" onchange="goToSelectedMonth()"
+                            min="2000" max="2100">
+                        <div class="year-btns-stack">
+                            <button onclick="nextYear()" class="year-btn" title="Следующий год">+</button>
+                            <button onclick="prevYear()" class="year-btn" title="Предыдущий год">−</button>
+                        </div>
+                    </div>
                 </div>
                 <button onclick="nextMonth()">▶</button>
             </div>
