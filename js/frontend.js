@@ -218,7 +218,7 @@ async function importHolidays() {
                 <div style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
                     <p style="margin-top: 20px; color: #666;">Импортируем праздники из внешних API...</p>
-                    <p style="font-size: 12px; color: #999; margin-top: 10px;">Это может занять до 30 секунд</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 10px;">Это может занять некоторое время</p>
                 </div>
             </div>
         </div>
@@ -1288,9 +1288,16 @@ function loadAdminStats() {
             console.error('Ошибка загрузки статистики:', error);
         });
 
-    // Загрузка статистики пользователей (если есть эндпоинт)
-    // Временно установим значение по умолчанию
-    document.getElementById('totalUsers').textContent = '2';
+    // Загрузка количества пользователей
+    fetch(`${API_URL}/admin/users`)
+        .then(response => response.json())
+        .then(users => {
+            document.getElementById('totalUsers').textContent = users.length;
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки пользователей:', error);
+            document.getElementById('totalUsers').textContent = '?';
+        });
 }
 
 function exportHolidays() {
@@ -1529,12 +1536,32 @@ async function importUsers() {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Показываем индикатор загрузки
+        const loadingModal = document.createElement('div');
+        loadingModal.id = 'import-users-loading';
+        loadingModal.className = 'modal active';
+        loadingModal.style.zIndex = '10002';
+        loadingModal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2 style="color: white; font-size: 20px;">📥 Импорт пользователей</h2>
+                </div>
+                <div class="modal-body" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 20px; color: #666;">Импортируем пользователей...</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 5px;">Пожалуйста, подождите</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(loadingModal);
+
         try {
             const text = await file.text();
             const users = JSON.parse(text);
 
             if (!Array.isArray(users)) {
                 alert('Неверный формат файла. Ожидается массив пользователей.');
+                loadingModal.remove();
                 return;
             }
 
@@ -1550,20 +1577,21 @@ async function importUsers() {
                 let message = `✅ Импорт завершён:\n- Добавлено: ${result.imported}\n- Пропущено (дубликаты): ${result.skipped}\n- Ошибок: ${result.errors}`;
 
                 if (result.passwords && result.passwords.length > 0) {
-                    message += '\n\n🔑 Сгенерированные пароли:\n';
-                    result.passwords.forEach(p => {
-                        message += `${p.email}: ${p.password}\n`;
-                    });
-                    message += '\n⚠️ Сохраните пароли! Они отправлены пользователям на почту.';
+                    message += '\n\n Новые пароли отправлены пользователям на почту.';
                 }
 
-                alert(message);
+                loadingModal.remove();
+                setTimeout(() => {
+                    alert(message);
+                }, 100);
                 await loadUsers();
             } else {
+                loadingModal.remove();
                 alert('Ошибка при импорте');
             }
 
         } catch (error) {
+            loadingModal.remove();
             alert('Ошибка чтения файла. Убедитесь, что это корректный JSON.');
         }
     };
