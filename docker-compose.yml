@@ -16,3 +16,13 @@ services:
       - "3000:3000"
     environment:
       - GF_INSTALL_PLUGINS=grafana-clock-panel
+      # SMTP для Email-алертов
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=ttttparap@gmail.com
+      - GF_SMTP_PASSWORD=eezh mbso fyra oape
+      - GF_SMTP_FROM_ADDRESS=ttttparap@gmail.com
+      - GF_SMTP_FROM_NAME=Eco-Kolendar Alerts
+      - GF_SMTP_SKIP_VERIFY=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
